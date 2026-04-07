@@ -1,5 +1,7 @@
 """Supabase JWT verification dependency."""
 
+from typing import NamedTuple
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -9,13 +11,21 @@ from app.core.config import settings
 _bearer_scheme = HTTPBearer()
 
 
+class AuthenticatedUser(NamedTuple):
+    """Payload extracted from a verified Supabase JWT."""
+
+    sub: str
+    email: str
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
-) -> str:
+) -> AuthenticatedUser:
     """Decode and verify a Supabase JWT.
 
-    Returns the ``sub`` claim (user UUID) on success.
-    Raises HTTP 401 if the token is missing, expired, or invalid.
+    Returns an ``AuthenticatedUser`` containing the ``sub`` claim (Supabase
+    user UUID) and the ``email`` claim.  Raises HTTP 401 if the token is
+    missing, expired, or invalid.
     """
     token = credentials.credentials
     try:
@@ -43,4 +53,8 @@ async def get_current_user(
             detail="Token missing subject claim",
         )
 
-    return user_id
+    email = payload.get("email", "")
+    if not isinstance(email, str):
+        email = ""
+
+    return AuthenticatedUser(sub=user_id, email=email)

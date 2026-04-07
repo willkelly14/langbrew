@@ -58,38 +58,39 @@ enum LBTheme {
 
     // MARK: Typography
 
-    // TODO: Bundle "Instrument Serif" and "Instrument Sans" font files into the app target
-    // and register them in Info.plist under UIAppFonts. Until then, Georgia (serif) and
-    // the system font (sans) serve as fallbacks.
-
     private static let serifFontName = "InstrumentSerif-Regular"
     private static let serifFallback = "Georgia"
 
-    private static let sansFontName = "InstrumentSans-Regular"
-    private static let sansMediumFontName = "InstrumentSans-Medium"
-    private static let sansSemiBoldFontName = "InstrumentSans-SemiBold"
+    private static let sansFamilyName = "Instrument Sans"
 
     /// Returns a serif font, falling back to Georgia if Instrument Serif is not available.
-    private static func serifFont(size: CGFloat) -> Font {
+    static func serifFont(size: CGFloat) -> Font {
         if UIFont(name: serifFontName, size: size) != nil {
             return .custom(serifFontName, size: size)
         }
         return .custom(serifFallback, size: size)
     }
 
-    /// Returns a sans font, falling back to system font if Instrument Sans is not available.
+    /// Returns a sans font at the given weight using the Instrument Sans variable font.
+    /// Falls back to the system font if Instrument Sans is not available.
     private static func sansFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        let name: String
-        switch weight {
-        case .medium:
-            name = sansMediumFontName
-        case .semibold:
-            name = sansSemiBoldFontName
-        default:
-            name = sansFontName
+        let uiWeight: UIFont.Weight = switch weight {
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        default: .regular
         }
-        if UIFont(name: name, size: size) != nil {
-            return .custom(name, size: size)
+
+        // Use font descriptor to select the correct weight from the variable font.
+        let descriptor = UIFontDescriptor(fontAttributes: [
+            .family: sansFamilyName,
+            .traits: [UIFontDescriptor.TraitKey.weight: uiWeight]
+        ])
+        let uiFont = UIFont(descriptor: descriptor, size: size)
+
+        // Verify the family resolved correctly; fall back to system if not.
+        if uiFont.familyName == sansFamilyName {
+            return Font(uiFont)
         }
         return .system(size: size, weight: weight)
     }

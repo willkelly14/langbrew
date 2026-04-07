@@ -119,6 +119,14 @@ final class AuthManager: Sendable {
         ))
     }
 
+    // MARK: - Mock Sign In (Onboarding)
+
+    /// Simulates a successful sign-in for onboarding with mock data.
+    /// Will be replaced with real Supabase auth in a later milestone.
+    func mockSignIn() {
+        persistSession(userId: "mock-user-\(UUID().uuidString)", token: "mock-jwt-token")
+    }
+
     // MARK: - Sign Out
 
     /// Signs the user out and clears all stored credentials.

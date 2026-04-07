@@ -7,7 +7,7 @@ from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
-from app.models.base import Base
+from app.models import Base  # noqa: F401 — side-effect: registers all models
 
 # Alembic Config object (provides access to alembic.ini values)
 config = context.config

@@ -22,6 +22,12 @@ ignore = [
     "B008", # Depends() in function defaults is idiomatic FastAPI
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# SQLAlchemy models need runtime type access for Mapped[] resolution
+"app/models/*.py" = ["TCH001", "TCH002", "TCH003"]
+# Pydantic schemas need runtime type access for validation
+"app/schemas/*.py" = ["TCH001", "TCH002", "TCH003"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 

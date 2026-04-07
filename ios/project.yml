@@ -1,0 +1,41 @@
+name: LangBrew
+options:
+  bundleIdPrefix: com.langbrew
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+
+targets:
+  LangBrew:
+    type: application
+    platform: iOS
+    sources:
+      - path: LangBrew
+        excludes:
+          - "**/.gitkeep"
+          - "**/.DS_Store"
+          - "Fonts/**"
+      - path: LangBrew/Fonts
+        buildPhase: resources
+    info:
+      path: LangBrew/Info.plist
+      properties:
+        UIAppFonts:
+          - InstrumentSerif-Regular.ttf
+          - InstrumentSerif-Italic.ttf
+          - InstrumentSans.ttf
+          - InstrumentSans-Italic.ttf
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.langbrew.app
+        INFOPLIST_FILE: LangBrew/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
