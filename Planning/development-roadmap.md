@@ -37,7 +37,7 @@ Build reusable components matching `components.html` design system before any fe
 - Create FastAPI project: `app/main.py`, `app/core/config.py`, `app/core/auth.py`
 - Dependencies: fastapi, uvicorn, sqlalchemy[asyncio], asyncpg, pyjwt, httpx, sse-starlette, arq, boto3
 - `Dockerfile` (python:3.12-slim + uvicorn)
-- `alembic/` with migration config pointing to Neon Postgres
+- `alembic/` with migration config pointing to Supabase Postgres
 - `.env` / config: SUPABASE_JWT_SECRET, OPENROUTER_API_KEY, MISTRAL_API_KEY, DATABASE_URL, REDIS_URL, R2 credentials
 - `GET /v1/health` endpoint (checks DB + Redis)
 - Supabase JWT verification middleware (`app/core/auth.py`)
@@ -104,14 +104,14 @@ Build the entire onboarding flow as static screens first:
 ### 1.4 Tests
 - Backend: user auto-creation, PATCH validation, language CRUD, duplicate language rejection, usage_meter auto-creation
 - Frontend: full onboarding completion, Apple sign-in (simulator), resume from mid-onboarding
-- Integration: sign up → complete onboarding → verify all records in Neon
+- Integration: sign up → complete onboarding → verify all records in Supabase Postgres
 
 ### 1.5 Verify & Improve
 - Sign up with Apple, Google, and email on real device
 - Complete full onboarding flow end-to-end
 - Kill app mid-onboarding, reopen — resumes correctly
 - Sign out, sign back in — data persists, skips to Home
-- Check Supabase + Neon for correct records
+- Check Supabase for correct records
 
 ---
 
@@ -601,7 +601,7 @@ Complete the remaining Settings sub-screens.
 
 ### 12.2 Backend — Feedback & Deletion
 - **`POST /v1/feedback`** — Store feedback_submission
-- **`DELETE /v1/me/account`** — Validate confirmation → cascade delete (all Neon tables, R2 files, device tokens, Supabase admin API)
+- **`DELETE /v1/me/account`** — Validate confirmation → cascade delete (all Supabase Postgres tables, R2 files, device tokens, Supabase admin API)
 - **Migrations:** Create `feedback_submissions`
 
 ### 12.3 Tests
@@ -610,7 +610,7 @@ Complete the remaining Settings sub-screens.
 - Sign out clears local data
 
 ### 12.4 Verify & Improve
-- Delete account → all data gone from Neon, R2, Supabase?
+- Delete account → all data gone from Supabase Postgres, R2?
 - Submit feedback → appears in DB?
 - Sign out → sign back in → data loads fresh from server?
 

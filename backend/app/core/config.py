@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     API_V1_PREFIX: str = "/v1"
 
-    # Database (Neon Postgres)
+    # Database (Supabase Postgres)
     DATABASE_URL: str
 
     # Cache (Upstash Redis)

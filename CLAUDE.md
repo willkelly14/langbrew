@@ -9,7 +9,7 @@ AI conversation practice, and spaced repetition flashcards.
 | -------- | ------------------------------------------------- |
 | Frontend | Swift 6, SwiftUI, iOS 18+, supabase-swift         |
 | Backend  | Python 3.12, FastAPI, uvicorn                     |
-| Database | Neon Postgres (SQLAlchemy async + asyncpg)        |
+| Database | Supabase Postgres (SQLAlchemy async + asyncpg)    |
 | Cache    | Upstash Redis                                     |
 | Auth     | Supabase Auth (Apple/Google/email)                |
 | Storage  | Cloudflare R2                                     |

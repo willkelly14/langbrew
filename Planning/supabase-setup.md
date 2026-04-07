@@ -7,7 +7,7 @@ Manual steps to configure Supabase for LangBrew.
 1. Go to https://supabase.com/dashboard → New Project
 2. Name: `langbrew`
 3. Region: pick closest to your users
-4. Generate a strong database password (not used directly — Neon is primary DB)
+4. Generate a strong database password (used for the Postgres connection string)
 5. Wait for project to provision
 
 ## 2. Get JWT Secret
@@ -69,5 +69,5 @@ SUPABASE_ANON_KEY=eyJ...your-anon-key
 
 - Free tier: 50K MAUs, project pauses after 7 days of inactivity
 - For production: upgrade to Supabase Pro ($25/mo) to prevent auto-pause
-- The backend does NOT use Supabase's database — all app data goes to Neon Postgres
+- Supabase provides both auth AND the database — all app data lives in Supabase Postgres
 - Supabase is only used for authentication (JWT issuance + token refresh)

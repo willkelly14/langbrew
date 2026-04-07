@@ -51,7 +51,7 @@ LangBrew is a language learning iOS app with three pillars: AI reading passages,
 AI conversation practice, and spaced repetition flashcards. The stack is:
 
 - **Frontend:** Swift 6, SwiftUI, iOS 18+, supabase-swift
-- **Backend:** Python 3.12, FastAPI, SQLAlchemy (async), Neon Postgres, Upstash Redis
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy (async), Supabase Postgres, Upstash Redis
 - **AI:** MiMo v2 Flash via OpenRouter, Qwen3-TTS (on-device), Voxtral STT
 - **Auth:** Supabase Auth (Apple/Google/email)
 - **Storage:** Cloudflare R2
