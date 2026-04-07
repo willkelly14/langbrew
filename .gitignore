@@ -5,3 +5,8 @@ __pycache__/
 *.pyc
 .venv/
 node_modules/
+.ruff_cache/
+.pytest_cache/
+*.db
+ios/.build/
+ios/.swiftpm/

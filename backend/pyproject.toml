@@ -1,0 +1,29 @@
+[project]
+name = "langbrew-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+]
+ignore = [
+    "B008", # Depends() in function defaults is idiomatic FastAPI
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
