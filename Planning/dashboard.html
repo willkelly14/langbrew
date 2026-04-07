@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangBrew — Planning Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --black: #2a2318;
+    --near-black: #3d3529;
+    --g50: #ebe7de;
+    --g100: #e0dbd0;
+    --g200: #d0c8b8;
+    --g300: #b8ae9f;
+    --g400: #9e9385;
+    --g500: #7a7062;
+    --white: #fff;
+    --linen: #f3f0ea;
+    --highlight: #ede8d2;
+  }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Instrument Sans', -apple-system, sans-serif;
+    background: var(--g50);
+    color: var(--black);
+    display: flex;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px;
+    background: var(--linen);
+    border-right: 1px solid var(--g100);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--g100);
+  }
+  .sidebar-header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--black);
+  }
+  .sidebar-header p {
+    font-size: 12px;
+    color: var(--g400);
+    margin-top: 4px;
+  }
+  .file-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--near-black);
+    border-left: 3px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .file-item:hover { background: var(--g50); }
+  .file-item.active {
+    background: var(--highlight);
+    border-left-color: var(--black);
+    font-weight: 600;
+  }
+  .file-item .ext {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--g400);
+    background: var(--g100);
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item .size { font-size: 11px; color: var(--g400); flex-shrink: 0; }
+
+  /* Main */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--white);
+    border-bottom: 1px solid var(--g100);
+    flex-shrink: 0;
+  }
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .toolbar-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 18px;
+    font-weight: 400;
+  }
+  .toolbar-path {
+    font-size: 12px;
+    color: var(--g400);
+  }
+  .toolbar-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .toolbar-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1.5px solid var(--g200);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--g500);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toolbar-btn:hover { border-color: var(--g300); color: var(--near-black); }
+  .toolbar-btn.active {
+    background: var(--black);
+    color: var(--white);
+    border-color: var(--black);
+  }
+  .toolbar-btn.save {
+    background: var(--black);
+    color: var(--white);
+    border-color: var(--black);
+  }
+  .toolbar-btn.save:hover { opacity: 0.9; }
+  .toolbar-btn.save:disabled {
+    background: var(--g200);
+    border-color: var(--g200);
+    color: var(--g400);
+    cursor: default;
+  }
+
+  /* Content area */
+  .content-area {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--g300);
+  }
+  .empty-state h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .empty-state p { font-size: 14px; }
+
+  /* Preview */
+  .preview {
+    height: 100%;
+    overflow-y: auto;
+    padding: 32px 48px;
+    background: var(--white);
+  }
+  .preview.md-preview {
+    max-width: 800px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--near-black);
+  }
+  .preview.md-preview h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 32px;
+    font-weight: 400;
+    margin: 0 0 8px;
+    color: var(--black);
+  }
+  .preview.md-preview h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    font-weight: 400;
+    margin: 32px 0 12px;
+    color: var(--black);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--g100);
+  }
+  .preview.md-preview h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 24px 0 8px;
+    color: var(--black);
+  }
+  .preview.md-preview p { margin: 0 0 12px; }
+  .preview.md-preview strong { font-weight: 600; color: var(--black); }
+  .preview.md-preview em { font-style: italic; }
+  .preview.md-preview ul, .preview.md-preview ol { margin: 0 0 12px; padding-left: 24px; }
+  .preview.md-preview li { margin: 4px 0; }
+  .preview.md-preview hr { border: none; border-top: 1px solid var(--g100); margin: 24px 0; }
+  .preview.md-preview code {
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-size: 13px;
+    background: var(--g50);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .preview.md-preview pre {
+    background: var(--g50);
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 0 0 12px;
+  }
+  .preview.md-preview pre code { background: none; padding: 0; }
+
+  /* HTML preview iframe */
+  .preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: var(--white);
+  }
+
+  /* Editor */
+  .editor {
+    width: 100%;
+    height: 100%;
+    border: none;
+    resize: none;
+    padding: 32px 48px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--near-black);
+    background: var(--white);
+    outline: none;
+    tab-size: 2;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--black);
+    color: var(--white);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>langbrew</h1>
+    <p>Planning Dashboard</p>
+  </div>
+  <div class="file-list" id="fileList"></div>
+</div>
+
+<div class="main">
+  <div class="toolbar" id="toolbar" style="display:none;">
+    <div class="toolbar-left">
+      <div>
+        <div class="toolbar-title" id="toolbarTitle"></div>
+        <div class="toolbar-path" id="toolbarPath"></div>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="toolbar-btn active" id="btnPreview" onclick="setMode('preview')">Preview</button>
+      <button class="toolbar-btn" id="btnEdit" onclick="setMode('edit')">Edit</button>
+      <button class="toolbar-btn save" id="btnSave" onclick="saveFile()" style="display:none;">Save</button>
+    </div>
+  </div>
+
+  <div class="content-area" id="contentArea">
+    <div class="empty-state">
+      <h2>Select a file</h2>
+      <p>Choose a file from the sidebar to view or edit.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentFile = null;
+let currentContent = '';
+let mode = 'preview';
+let dirty = false;
+
+async function loadFiles() {
+  const res = await fetch('/api/files');
+  const files = await res.json();
+  const list = document.getElementById('fileList');
+  list.innerHTML = '';
+  files.forEach(f => {
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    el.innerHTML = `
+      <span class="ext">${f.ext.replace('.', '')}</span>
+      <span class="name">${f.path}</span>
+      <span class="size">${formatSize(f.size)}</span>
+    `;
+    el.onclick = () => openFile(f.path);
+    list.appendChild(el);
+  });
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  return (bytes / 1024).toFixed(1) + 'K';
+}
+
+async function openFile(filePath) {
+  if (dirty && !confirm('You have unsaved changes. Discard?')) return;
+
+  currentFile = filePath;
+  dirty = false;
+
+  // Update sidebar active state
+  document.querySelectorAll('.file-item').forEach((el, i) => {
+    el.classList.toggle('active', el.querySelector('.name').textContent === filePath);
+  });
+
+  // Show toolbar
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('toolbarTitle').textContent = filePath.split('/').pop();
+  document.getElementById('toolbarPath').textContent = filePath;
+
+  // Load content
+  const res = await fetch('/api/file?path=' + encodeURIComponent(filePath));
+  currentContent = await res.text();
+
+  setMode('preview');
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnPreview').classList.toggle('active', m === 'preview');
+  document.getElementById('btnEdit').classList.toggle('active', m === 'edit');
+  document.getElementById('btnSave').style.display = m === 'edit' ? 'inline-block' : 'none';
+
+  const area = document.getElementById('contentArea');
+  const ext = currentFile ? currentFile.split('.').pop() : '';
+
+  if (m === 'preview') {
+    if (ext === 'md') {
+      area.innerHTML = `<div class="preview md-preview">${renderMarkdown(currentContent)}</div>`;
+    } else if (ext === 'html') {
+      area.innerHTML = `<iframe class="preview-iframe" src="/${currentFile.split('/').map(encodeURIComponent).join('/')}"></iframe>`;
+    } else {
+      area.innerHTML = `<div class="preview"><pre style="white-space:pre-wrap;">${escapeHtml(currentContent)}</pre></div>`;
+    }
+  } else {
+    area.innerHTML = `<textarea class="editor" id="editor" spellcheck="false">${escapeHtml(currentContent)}</textarea>`;
+    const editor = document.getElementById('editor');
+    editor.addEventListener('input', () => {
+      dirty = true;
+      document.getElementById('btnSave').disabled = false;
+    });
+    // Tab key support
+    editor.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 2;
+        dirty = true;
+      }
+      // Cmd+S to save
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        saveFile();
+      }
+    });
+    editor.focus();
+  }
+}
+
+async function saveFile() {
+  const editor = document.getElementById('editor');
+  if (!editor) return;
+  const content = editor.value;
+
+  const res = await fetch('/api/file', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: currentFile, content })
+  });
+
+  if (res.ok) {
+    currentContent = content;
+    dirty = false;
+    showToast('Saved');
+  } else {
+    showToast('Error saving file');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Simple markdown renderer
+function renderMarkdown(md) {
+  let html = escapeHtml(md);
+
+  // Code blocks (``` ... ```)
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre><code>${code.trim()}</code></pre>`;
+  });
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr>');
+
+  // Bold + italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+  // Paragraphs (lines that aren't already wrapped in tags)
+  html = html.replace(/^(?!<[huplo]|<hr|<li)(.+)$/gm, '<p>$1</p>');
+
+  // Clean up empty paragraphs
+  html = html.replace(/<p>\s*<\/p>/g, '');
+
+  return html;
+}
+
+// Init
+loadFiles();
+</script>
+</body>
+</html>

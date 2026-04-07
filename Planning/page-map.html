@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangBrew — Visual Page Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --black: #2a2318;
+    --near-black: #3d3529;
+    --g50: #ebe7de;
+    --g100: #e0dbd0;
+    --g200: #d0c8b8;
+    --g300: #b8ae9f;
+    --g400: #9e9385;
+    --g500: #7a7062;
+    --white: #fff;
+    --linen: #f3f0ea;
+    --highlight: #ede8d2;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Instrument Sans', -apple-system, sans-serif;
+    background: var(--linen);
+    color: var(--black);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* Header */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--white);
+    border-bottom: 1px solid var(--g100);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    font-weight: 400;
+  }
+  .header .subtitle { font-size: 13px; color: var(--g400); margin-left: 12px; }
+  .legend {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--g500);
+  }
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* Main content */
+  .content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 40px;
+  }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    font-weight: 400;
+  }
+  .section-count {
+    font-size: 12px;
+    color: var(--g400);
+    font-weight: 500;
+  }
+
+  /* Flow row — horizontal scrollable row of page cards with arrows */
+  .flow-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.12) transparent;
+  }
+  .flow-row::-webkit-scrollbar { height: 4px; }
+  .flow-row::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+
+  /* Arrow between cards */
+  .flow-arrow {
+    display: flex;
+    align-items: flex-start;
+    padding-top: 28px;
+    flex-shrink: 0;
+    color: var(--g300);
+    font-size: 18px;
+    margin: 0 4px;
+    user-select: none;
+  }
+
+  /* Page card */
+  .page-card {
+    background: var(--white);
+    border-radius: 14px;
+    border: 2px solid var(--g200);
+    min-width: 180px;
+    max-width: 240px;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .page-card:hover {
+    border-color: var(--g300);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .page-card.is-tab {
+    border-color: var(--black);
+    border-width: 2.5px;
+  }
+
+  /* Page card header */
+  .pc-header {
+    padding: 14px 16px 10px;
+    background: var(--black);
+    color: var(--white);
+  }
+  .page-card.is-tab .pc-header {
+    background: var(--near-black);
+  }
+  .pc-id {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.5;
+    margin-bottom: 2px;
+  }
+  .pc-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .pc-desc {
+    font-size: 11px;
+    opacity: 0.6;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .pc-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+  .pc-badge.tab { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); }
+  .pc-badge.overlay { background: var(--highlight); color: var(--near-black); }
+
+  /* Sub-items list inside card */
+  .pc-subs {
+    padding: 8px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .pc-subs-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--g400);
+    padding: 4px 4px 2px;
+  }
+  .sub-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: var(--linen);
+    font-size: 12px;
+  }
+  .sub-item:hover { background: var(--g50); }
+  .sub-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .sub-dot.sheet { background: var(--g300); border: 1.5px dashed var(--g400); }
+  .sub-dot.state { background: var(--g200); border: 1.5px dotted var(--g400); }
+  .sub-dot.dialog { background: var(--white); border: 2px solid #a07850; }
+  .sub-name {
+    font-weight: 500;
+    color: var(--near-black);
+    flex: 1;
+  }
+  .sub-type {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--g400);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+  .sub-trigger {
+    font-size: 10px;
+    color: var(--g400);
+    font-style: italic;
+    flex-shrink: 0;
+  }
+
+  /* No subs spacer */
+  .pc-no-subs {
+    padding: 0 12px 8px;
+  }
+
+  /* Cross-link note */
+  .pc-links {
+    padding: 4px 12px 10px;
+    border-top: 1px solid var(--g100);
+  }
+  .pc-link {
+    font-size: 10px;
+    color: var(--g400);
+    line-height: 1.6;
+  }
+  .pc-link span {
+    font-weight: 600;
+    color: var(--g500);
+  }
+
+  /* Multi-row section */
+  .flow-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .flow-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--g400);
+    margin-bottom: 4px;
+    padding-left: 4px;
+  }
+
+  /* Tab bar illustration */
+  .tab-bar-illus {
+    display: flex;
+    background: var(--white);
+    border-radius: 12px;
+    border: 2px solid var(--g200);
+    overflow: hidden;
+    margin-bottom: 24px;
+    max-width: 600px;
+  }
+  .tab-bar-item {
+    flex: 1;
+    text-align: center;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--g400);
+    border-right: 1px solid var(--g100);
+    cursor: default;
+  }
+  .tab-bar-item:last-child { border-right: none; }
+  .tab-bar-item .tb-icon { font-size: 16px; margin-bottom: 2px; }
+  .tab-bar-item a {
+    text-decoration: none;
+    color: inherit;
+    font-weight: 600;
+  }
+  .tab-bar-item a:hover { color: var(--black); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:baseline;">
+    <h1>Page Map</h1>
+    <span class="subtitle">68 screens across 9 sections</span>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--black)"></div>Page</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--near-black);border:2.5px solid var(--black)"></div>Tab Page</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--g300);border:1.5px dashed var(--g400)"></div>Bottom Sheet</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--g200);border:1.5px dotted var(--g400)"></div>State</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--white);border:2px solid #a07850"></div>Dialog</div>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ═══════ ONBOARDING ═══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">Onboarding</div>
+    <div class="section-count">19 screens</div>
+  </div>
+
+  <div class="flow-rows">
+    <div>
+      <div class="flow-label">App Launch & Auth</div>
+      <div class="flow-row">
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">S1</div><div class="pc-name">Splash</div><div class="pc-desc">Logo & wordmark fade-in</div></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">L0</div><div class="pc-name">Loading</div><div class="pc-desc">Floating words transition</div><div class="pc-badge overlay">Overlay</div></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">O1</div><div class="pc-name">Welcome</div><div class="pc-desc">Read, Talk, Revise intro</div></div>
+          <div class="pc-links">
+            <div class="pc-link">→ <span>Get Started</span> enters carousel</div>
+            <div class="pc-link">→ <span>Sign In</span> goes to Log In</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">L1</div><div class="pc-name">Log In</div><div class="pc-desc">Apple / Google / email</div></div>
+          <div class="pc-links">
+            <div class="pc-link">→ <span>Forgot Password</span></div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">L2</div><div class="pc-name">Forgot Password</div><div class="pc-desc">Email to reset</div></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">L3</div><div class="pc-name">Verify Code</div><div class="pc-desc">6-digit code entry</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flow-label">Educational Carousel (6 steps)</div>
+      <div class="flow-row">
+        <div class="page-card"><div class="pc-header"><div class="pc-id">C0</div><div class="pc-name">The Science</div><div class="pc-desc">Language acquisition philosophy</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">C1</div><div class="pc-name">Real Reading</div><div class="pc-desc">Drills vs real reading</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">C2</div><div class="pc-name">Your Level</div><div class="pc-desc">Content tuned to you</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">C3</div><div class="pc-name">Your Interests</div><div class="pc-desc">Topic selection</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">C4</div><div class="pc-name">Remember</div><div class="pc-desc">Forgetting curve</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">C5</div><div class="pc-name">Talk</div><div class="pc-desc">AI conversation demo</div></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flow-label">Setup Flow (5 steps) → First Passage</div>
+      <div class="flow-row">
+        <div class="page-card"><div class="pc-header"><div class="pc-id">O2</div><div class="pc-name">Language</div><div class="pc-desc">Target language grid</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">O3</div><div class="pc-name">Proficiency</div><div class="pc-desc">CEFR level (A1–C1)</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">O4</div><div class="pc-name">Interests</div><div class="pc-desc">Topic pills</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">O5</div><div class="pc-name">Daily Goal</div><div class="pc-desc">5/10/20/30 min cards</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">O6</div><div class="pc-name">Account</div><div class="pc-desc">Apple / Google / email</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">O6b</div><div class="pc-name">Choose Plan</div><div class="pc-desc">Free vs Fluency</div></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card"><div class="pc-header"><div class="pc-id">O7</div><div class="pc-name">First Passage</div><div class="pc-desc">Celebration + preview</div></div>
+          <div class="pc-links"><div class="pc-link">→ <span>Home</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ TAB BAR ═══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">Main App</div>
+  </div>
+  <div class="tab-bar-illus">
+    <div class="tab-bar-item"><div class="tb-icon">🏠</div><a href="#home">Home</a></div>
+    <div class="tab-bar-item"><div class="tb-icon">📚</div><a href="#library">Library</a></div>
+    <div class="tab-bar-item"><div class="tb-icon">💬</div><a href="#talk">Talk</a></div>
+    <div class="tab-bar-item"><div class="tb-icon">🗂</div><a href="#flashcards">Flashcards</a></div>
+  </div>
+</div>
+
+<!-- ═══════ HOME ═══════ -->
+<div class="section" id="home">
+  <div class="section-header">
+    <div class="section-title">Home</div>
+    <div class="section-count">2 pages</div>
+  </div>
+  <div class="flow-row">
+    <div class="page-card is-tab">
+      <div class="pc-header">
+        <div class="pc-id">1</div><div class="pc-name">Home</div>
+        <div class="pc-desc">Greeting, streak, quick actions, today's passage, active book, stats</div>
+        <div class="pc-badge tab">Tab</div>
+      </div>
+      <div class="pc-links">
+        <div class="pc-link">→ <span>Talk</span> quick action button</div>
+        <div class="pc-link">→ <span>Flashcards</span> quick action button</div>
+        <div class="pc-link">→ <span>Reading</span> via passage/book cards</div>
+        <div class="pc-link">→ <span>Settings</span> via profile avatar</div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="page-card">
+      <div class="pc-header"><div class="pc-id">8</div><div class="pc-name">Statistics</div><div class="pc-desc">CEFR level, skills, achievements, topics</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ LIBRARY ═══════ -->
+<div class="section" id="library">
+  <div class="section-header">
+    <div class="section-title">Library</div>
+    <div class="section-count">11 screens (4 pages, 4 sheets, 3 states)</div>
+  </div>
+  <div class="flow-row">
+    <div class="page-card is-tab" style="max-width:280px;">
+      <div class="pc-header">
+        <div class="pc-id">2a</div><div class="pc-name">Library — Passages</div>
+        <div class="pc-desc">Passage grid with generate CTA</div>
+        <div class="pc-badge tab">Tab</div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Interactions</div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Generate Passage</span><span class="sub-type">Sheet</span></div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Custom Generate</span><span class="sub-type">State</span></div>
+      </div>
+      <div class="pc-links">
+        <div class="pc-link">→ <span>Reading</span> via passage card</div>
+        <div class="pc-link">Tab toggle → <span>My Books</span></div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="page-card">
+      <div class="pc-header"><div class="pc-id">2a-all</div><div class="pc-name">All Passages</div><div class="pc-desc">Expanded list with search</div></div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Interactions</div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Sort & Filter</span><span class="sub-type">Sheet</span></div>
+      </div>
+    </div>
+    <div class="flow-arrow" style="margin:0 20px;">│</div>
+    <div class="page-card is-tab" style="max-width:280px;">
+      <div class="pc-header">
+        <div class="pc-id">2b</div><div class="pc-name">My Books — List</div>
+        <div class="pc-desc">Books with covers, progress, levels</div>
+        <div class="pc-badge tab">Tab toggle</div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Import Flow</div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Import Book</span><span class="sub-type">Sheet</span></div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Confirm Import</span><span class="sub-type">Sheet</span></div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Importing</span><span class="sub-type">State</span></div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Import Success</span><span class="sub-type">State</span></div>
+      </div>
+      <div class="pc-links">
+        <div class="pc-link">→ <span>Reading</span> via book row</div>
+        <div class="pc-link">View toggle → <span>Covers View</span></div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="page-card">
+      <div class="pc-header"><div class="pc-id">2c</div><div class="pc-name">Covers View</div><div class="pc-desc">Wonky bookshelf grid</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ TALK ═══════ -->
+<div class="section" id="talk">
+  <div class="section-header">
+    <div class="section-title">Talk</div>
+    <div class="section-count">4 screens (3 pages, 1 sheet)</div>
+  </div>
+  <div class="flow-row">
+    <div class="page-card is-tab">
+      <div class="pc-header">
+        <div class="pc-id">3b</div><div class="pc-name">Talk — Chats</div>
+        <div class="pc-desc">Chat history + New Chat</div>
+        <div class="pc-badge tab">Tab</div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Interactions</div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">New Conversation</span><span class="sub-type">Sheet</span></div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="page-card">
+      <div class="pc-header"><div class="pc-id">3a</div><div class="pc-name">Talk</div><div class="pc-desc">Active conversation with AI partner</div></div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="page-card">
+      <div class="pc-header"><div class="pc-id">3c</div><div class="pc-name">Feedback</div><div class="pc-desc">Score, skills, corrections</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ READING ═══════ -->
+<div class="section" id="reading">
+  <div class="section-header">
+    <div class="section-title">Reading Experience</div>
+    <div class="section-count">9 screens (1 page, 6 sheets, 2 states)</div>
+  </div>
+  <div class="flow-row">
+    <div class="page-card" style="max-width:320px;">
+      <div class="pc-header">
+        <div class="pc-id">4a</div><div class="pc-name">Reading</div>
+        <div class="pc-desc">Reader view with highlighted vocabulary</div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Bottom Sheets</div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Table of Contents</span><span class="sub-trigger">TOC icon</span></div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Word Tap</span><span class="sub-trigger">Tap word</span></div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Word Long Press</span><span class="sub-trigger">Long press</span></div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Phrase Selection</span><span class="sub-trigger">Drag phrase</span></div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Text Options</span><span class="sub-trigger">Aa icon</span></div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">States</div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Word Tap — Undo</span><span class="sub-trigger">After add</span></div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Listening Mode</span><span class="sub-trigger">Headphones</span></div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">In Listening Mode</div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Voice Options</span><span class="sub-trigger">Voice icon</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ FLASHCARDS ═══════ -->
+<div class="section" id="flashcards">
+  <div class="section-header">
+    <div class="section-title">Flashcards</div>
+    <div class="section-count">8 screens (4 pages, 1 sheet, 3 states)</div>
+  </div>
+  <div class="flow-rows">
+    <div>
+      <div class="flow-label">Hub</div>
+      <div class="flow-row">
+        <div class="page-card is-tab" style="max-width:260px;">
+          <div class="pc-header">
+            <div class="pc-id">5</div><div class="pc-name">Flashcards</div>
+            <div class="pc-desc">Mastery breakdown, review forecast, learning velocity</div>
+            <div class="pc-badge tab">Tab</div>
+          </div>
+          <div class="pc-subs">
+            <div class="pc-subs-label">Interactions</div>
+            <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Custom Study</span><span class="sub-type">Sheet</span></div>
+          </div>
+          <div class="pc-links">
+            <div class="pc-link">→ <span>Review Flow</span> via Start Review</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">5c</div><div class="pc-name">Past Sessions</div><div class="pc-desc">History grouped by date</div></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="page-card">
+          <div class="pc-header"><div class="pc-id">5d</div><div class="pc-name">Session Detail</div><div class="pc-desc">Detailed session breakdown</div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="flow-label">Review Flow</div>
+      <div class="flow-row">
+        <div class="page-card" style="max-width:260px;">
+          <div class="pc-header">
+            <div class="pc-id">7 / 7b</div><div class="pc-name">Flashcard Front</div>
+            <div class="pc-desc">Word or phrase with pronunciation</div>
+          </div>
+          <div class="pc-subs">
+            <div class="pc-subs-label">Variants</div>
+            <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Phrase Front</span><span class="sub-type">State</span></div>
+          </div>
+        </div>
+        <div class="flow-arrow">tap →</div>
+        <div class="page-card" style="max-width:260px;">
+          <div class="pc-header">
+            <div class="pc-id">8 / 8b</div><div class="pc-name">Flashcard Back</div>
+            <div class="pc-desc">Translation, definitions, right/wrong</div>
+          </div>
+          <div class="pc-subs">
+            <div class="pc-subs-label">Variants</div>
+            <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Phrase Back</span><span class="sub-type">State</span></div>
+          </div>
+          <div class="pc-links"><div class="pc-link">→ next <span>Flashcard Front</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ LANGUAGE BANK ═══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">Language Bank</div>
+    <div class="section-count">4 screens (1 page with 3 tab states, 1 sheet)</div>
+  </div>
+  <div class="flow-row">
+    <div class="page-card" style="max-width:280px;">
+      <div class="pc-header">
+        <div class="pc-id">6</div><div class="pc-name">Language Bank</div>
+        <div class="pc-desc">Saved vocabulary management</div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Tab States</div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Words</span><span class="sub-trigger">Default tab</span></div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Phrases</span><span class="sub-trigger">Tab</span></div>
+        <div class="sub-item"><div class="sub-dot state"></div><span class="sub-name">Sentences</span><span class="sub-trigger">Tab</span></div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Interactions</div>
+        <div class="sub-item"><div class="sub-dot sheet"></div><span class="sub-name">Item Detail</span><span class="sub-trigger">Tap item</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SETTINGS ═══════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">Profile & Settings</div>
+    <div class="section-count">11 screens (10 pages, 1 dialog)</div>
+  </div>
+  <div class="flow-row">
+    <div class="page-card" style="max-width:300px;">
+      <div class="pc-header">
+        <div class="pc-id">7</div><div class="pc-name">Settings</div>
+        <div class="pc-desc">Profile, learning, reading, talk, notifications, account</div>
+      </div>
+      <div class="pc-subs">
+        <div class="pc-subs-label">Navigates to</div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Language Detail</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Edit Account</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Subscription</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Daily Goal</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Reminder Time</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Send Feedback</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Help Center</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Privacy Policy</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot" style="background:var(--black);border-radius:2px;"></div><span class="sub-name">Terms of Service</span><span class="sub-type">Page</span></div>
+        <div class="sub-item"><div class="sub-dot dialog"></div><span class="sub-name">Delete Account</span><span class="sub-type">Dialog</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px;"></div>
+</div>
+
+</body>
+</html>
