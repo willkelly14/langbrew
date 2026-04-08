@@ -248,7 +248,7 @@ private struct CarouselC1Reading: View {
 
 // MARK: - C2: Your Level
 
-private struct CarouselC2Level: View {
+struct CarouselC2Level: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: LBTheme.Spacing.sm) {
@@ -266,30 +266,23 @@ private struct CarouselC2Level: View {
             }
             .padding(.top, LBTheme.Spacing.xxl)
 
+
             Spacer()
 
-            // Vertical gauge
-            HStack(alignment: .top, spacing: LBTheme.Spacing.md) {
-                // Vertical line with dot
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        // Line
-                        Rectangle()
-                            .fill(Color.lbG100)
-                            .frame(width: 2)
-                            .clipShape(RoundedRectangle(cornerRadius: 1))
-                            .frame(maxHeight: .infinity)
-                            .padding(.vertical, LBTheme.Spacing.sm)
-
-                        // Dot at center
+            // Vertical gauge — line + dot in layout alongside blocks
+            HStack(spacing: 12) {
+                // Line + dot column
+                Rectangle()
+                    .fill(Color.lbG100)
+                    .frame(width: 2)
+                    .padding(.vertical, LBTheme.Spacing.md)
+                    .overlay {
                         Circle()
                             .fill(Color.lbBlack)
                             .frame(width: 10, height: 10)
-                            .position(x: 1, y: geometry.size.height / 2)
+                            .offset(y: -6)
                     }
                     .frame(width: 10)
-                }
-                .frame(width: 10)
 
                 // Level blocks
                 VStack(spacing: 10) {
@@ -318,8 +311,9 @@ private struct CarouselC2Level: View {
                     )
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: 320)
-            .padding(.horizontal, 30)
+            .offset(y: 0)
 
             Spacer()
         }
@@ -364,9 +358,18 @@ private struct C2Block: View {
                     lineWidth: 1.5
                 )
         }
+        .overlay {
+            if isActive {
+                RoundedRectangle(cornerRadius: LBTheme.Radius.large + 1.5)
+                    .strokeBorder(
+                        Color.lbBlack.opacity(0.06),
+                        lineWidth: 4.5
+                    )
+                    .padding(-3)
+            }
+        }
         .opacity(isFaded ? 0.5 : 1)
         .scaleEffect(isActive ? 1.03 : 1.0)
-        .shadow(color: isActive ? Color.lbBlack.opacity(0.06) : .clear, radius: isActive ? 3 : 0)
     }
 
     private var c2ActiveText: Text {
@@ -854,6 +857,13 @@ private func highlightedWord(_ word: String) -> AttributedString {
     var attr = AttributedString(word)
     attr.backgroundColor = Color.lbHighlight
     return attr
+}
+
+#Preview("C2 Level") {
+    ZStack {
+        Color.lbLinen.ignoresSafeArea()
+        CarouselC2Level()
+    }
 }
 
 #Preview {
