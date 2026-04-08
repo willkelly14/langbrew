@@ -5,7 +5,7 @@ import Foundation
 /// Request body for `PATCH /v1/me`. All fields are optional;
 /// only non-nil fields are sent to the server.
 struct UserUpdate: Codable, Sendable {
-    var name: String?
+    var firstName: String?
     var dailyGoalMinutes: Int?
     var newWordsPerDay: Int?
     var autoAdjustDifficulty: Bool?
@@ -15,7 +15,7 @@ struct UserUpdate: Codable, Sendable {
 
     /// Returns true when every field is nil (nothing to send).
     var isEmpty: Bool {
-        name == nil
+        firstName == nil
             && dailyGoalMinutes == nil
             && newWordsPerDay == nil
             && autoAdjustDifficulty == nil

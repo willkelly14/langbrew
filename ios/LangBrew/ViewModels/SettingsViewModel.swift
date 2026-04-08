@@ -121,7 +121,7 @@ final class SettingsViewModel {
         guard let me = coordinator.currentUser else { return }
 
         let user = me.user
-        userName = user.name
+        userName = user.firstName
         email = user.email
         avatarUrl = user.avatarUrl
         subscriptionTier = user.subscriptionTier
@@ -171,7 +171,7 @@ final class SettingsViewModel {
         userName = name
         Task {
             do {
-                _ = try await UserService.shared.updateMe(UserUpdate(name: name))
+                _ = try await UserService.shared.updateMe(UserUpdate(firstName: name))
                 await coordinator.refreshUser()
             } catch {
                 print("[SettingsViewModel] Failed to update name: \(error)")

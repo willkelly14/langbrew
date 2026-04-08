@@ -121,59 +121,7 @@ struct ProficiencyView: View {
     }
 }
 
-// MARK: - Level Card Row
-
-private struct LevelCardRow: View {
-    let code: String
-    let name: String
-    let description: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .top, spacing: 14) {
-                // Selection circle
-                SelectionCircle(isSelected: isSelected)
-                    .padding(.top, 2)
-
-                // Level text
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(name)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Color.lbBlack)
-
-                    Text(description)
-                        .font(LBTheme.Typography.caption)
-                        .foregroundStyle(Color.lbG500)
-                        .lineSpacing(2)
-                }
-
-                Spacer()
-
-                // CEFR pill
-                Text(code)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color.lbG500)
-                    .padding(.horizontal, LBTheme.Spacing.sm)
-                    .padding(.vertical, 3)
-                    .background(Color.lbG100)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            .padding(LBTheme.Spacing.lg)
-            .background(isSelected ? Color.lbHighlight : Color.lbWhite)
-            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-            .overlay {
-                RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                    .strokeBorder(
-                        isSelected ? Color.lbNearBlack : Color.lbG100,
-                        lineWidth: 1.5
-                    )
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
+// LevelCardRow is defined in OnboardingSetupView.swift as a shared component.
 
 #Preview {
     ProficiencyView(onboardingState: OnboardingState()) {}

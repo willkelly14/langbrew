@@ -105,9 +105,9 @@ struct AccountSetupView: View {
 
                     // Name input
                     OnboardingInput(
-                        placeholder: "Full name",
+                        placeholder: "First name",
                         text: $name,
-                        textContentType: .name
+                        textContentType: .givenName
                     )
                     .textInputAutocapitalization(.words)
                     .padding(.bottom, 10)
@@ -214,7 +214,7 @@ struct AccountSetupView: View {
 
     private func handleEmailSignUp() async {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
-            errorMessage = "Please enter your name."
+            errorMessage = "Please enter your first name."
             return
         }
         guard !email.isEmpty else {
@@ -242,7 +242,7 @@ struct AccountSetupView: View {
             } else {
                 let trimmedName = name.trimmingCharacters(in: .whitespaces)
                 if !trimmedName.isEmpty {
-                    _ = try? await UserService.shared.updateMe(UserUpdate(name: trimmedName))
+                    _ = try? await UserService.shared.updateMe(UserUpdate(firstName: trimmedName))
                 }
                 await postAuthFlow()
             }
@@ -260,7 +260,7 @@ struct AccountSetupView: View {
 
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         if !trimmedName.isEmpty {
-            _ = try? await UserService.shared.updateMe(UserUpdate(name: trimmedName))
+            _ = try? await UserService.shared.updateMe(UserUpdate(firstName: trimmedName))
         }
 
         await postAuthFlow()

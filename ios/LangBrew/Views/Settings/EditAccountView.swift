@@ -75,12 +75,12 @@ struct EditAccountView: View {
         VStack(spacing: 0) {
             // Name field
             VStack(alignment: .leading, spacing: LBTheme.Spacing.xs) {
-                Text("NAME")
+                Text("FIRST NAME")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Color.lbG400)
                     .kerning(0.5)
 
-                TextField("Your name", text: $editedName)
+                TextField("Your first name", text: $editedName)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color.lbNearBlack)
             }

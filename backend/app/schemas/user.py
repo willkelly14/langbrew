@@ -20,7 +20,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     supabase_uid: str
     email: str
-    name: str
+    first_name: str
     avatar_url: str | None
     native_language: str
     subscription_tier: SubscriptionTier
@@ -38,7 +38,7 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     """Mutable user profile fields."""
 
-    name: str | None = None
+    first_name: str | None = None
     daily_goal_minutes: int | None = Field(default=None, ge=1, le=120)
     new_words_per_day: int | None = Field(default=None, ge=1, le=100)
     auto_adjust_difficulty: bool | None = None

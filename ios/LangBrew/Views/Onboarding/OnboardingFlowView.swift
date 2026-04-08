@@ -39,24 +39,34 @@ struct OnboardingFlowView: View {
 
     /// If the user has a saved onboarding step beyond the welcome screen,
     /// rebuild the navigation path so they resume where they left off.
+    ///
+    /// The 4 setup steps (language, proficiency, interests, daily goal) now
+    /// live in a single `OnboardingSetupView` container. The nav path only
+    /// needs `.languageSelection` as entry point; the container reads
+    /// `onboardingState.currentStep` to restore the correct sub-step.
     private func resumeIfNeeded() {
         guard onboardingState.currentStep.rawValue > OnboardingStep.welcome.rawValue else {
             return
         }
 
-        // Build the path from the start up to (and including) the saved step.
         var resumePath: [OnboardingStep] = []
-        let targetRaw = onboardingState.currentStep.rawValue
+        let saved = onboardingState.currentStep
 
-        // Walk through the ordered steps, adding each to the path.
-        let orderedSteps: [OnboardingStep] = [
-            .carousel, .languageSelection, .proficiency, .interests,
-            .dailyGoal, .accountSetup, .choosePlan, .firstPassage
+        // The ordered navigation destinations (collapsed setup steps).
+        // .languageSelection is the single entry for all 5 setup sub-steps.
+        let navSteps: [OnboardingStep] = [
+            .carousel, .languageSelection, .choosePlan, .firstPassage
         ]
 
-        for step in orderedSteps {
+        // Map saved sub-steps to the container entry point for comparison.
+        let setupSteps: Set<OnboardingStep> = [
+            .languageSelection, .proficiency, .interests, .dailyGoal, .accountSetup
+        ]
+        let effectiveSaved: OnboardingStep = setupSteps.contains(saved) ? .languageSelection : saved
+
+        for step in navSteps {
             resumePath.append(step)
-            if step.rawValue >= targetRaw {
+            if step == effectiveSaved {
                 break
             }
         }
@@ -72,24 +82,15 @@ struct OnboardingFlowView: View {
                 onComplete: { path.append(.languageSelection) },
                 onSkip: { path.append(.languageSelection) }
             )
-        case .languageSelection:
-            LanguageSelectionView(onboardingState: onboardingState) {
-                path.append(.proficiency)
-            }
-        case .proficiency:
-            ProficiencyView(onboardingState: onboardingState) {
-                path.append(.interests)
-            }
-        case .interests:
-            InterestsView(onboardingState: onboardingState) {
-                path.append(.dailyGoal)
-            }
-        case .dailyGoal:
-            DailyGoalView(onboardingState: onboardingState) {
-                path.append(.accountSetup)
-            }
-        case .accountSetup:
-            AccountSetupView(authManager: authManager, coordinator: coordinator) {
+        case .languageSelection, .proficiency, .interests, .dailyGoal, .accountSetup:
+            // All 5 setup steps live in a single sliding container.
+            // The container reads onboardingState.currentStep to determine
+            // which sub-step to show, so resume-on-restart works.
+            OnboardingSetupView(
+                onboardingState: onboardingState,
+                authManager: authManager,
+                coordinator: coordinator
+            ) {
                 path.append(.choosePlan)
             }
         case .choosePlan:

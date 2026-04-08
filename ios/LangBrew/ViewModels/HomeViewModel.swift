@@ -140,7 +140,7 @@ final class HomeViewModel {
 
     /// Maps a `HomeResponse` into view model properties.
     private func applyHomeResponse(_ response: HomeResponse) {
-        userName = response.user.name
+        userName = response.user.firstName
         avatarUrl = response.user.avatarUrl
         currentStreak = response.user.currentStreak
         streakWeek = response.user.streakWeek
@@ -162,7 +162,7 @@ final class HomeViewModel {
     /// when the home endpoint is unavailable.
     private func populateFromCoordinator() {
         guard let me = coordinator.currentUser else { return }
-        userName = me.user.name
+        userName = me.user.firstName
         avatarUrl = me.user.avatarUrl
         currentStreak = me.user.currentStreak
 

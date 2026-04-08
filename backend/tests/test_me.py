@@ -66,10 +66,10 @@ async def test_get_me_includes_active_language(client: AsyncClient) -> None:
 @pytest.mark.anyio
 async def test_update_user_name(client: AsyncClient) -> None:
     """PATCH /v1/me updates the user's display name."""
-    response = await client.patch("/v1/me", json={"name": "Alice"})
+    response = await client.patch("/v1/me", json={"first_name": "Alice"})
 
     assert response.status_code == 200
-    assert response.json()["name"] == "Alice"
+    assert response.json()["first_name"] == "Alice"
 
 
 @pytest.mark.anyio
@@ -445,7 +445,7 @@ async def test_user_update_roundtrip(client: AsyncClient) -> None:
     """PATCH /v1/me with name and daily_goal → GET /v1/me reflects both changes."""
     patch_resp = await client.patch(
         "/v1/me",
-        json={"name": "Maria", "daily_goal_minutes": 45},
+        json={"first_name": "Maria", "daily_goal_minutes": 45},
     )
     assert patch_resp.status_code == 200
 
@@ -453,7 +453,7 @@ async def test_user_update_roundtrip(client: AsyncClient) -> None:
     assert me_resp.status_code == 200
     user = me_resp.json()["user"]
 
-    assert user["name"] == "Maria"
+    assert user["first_name"] == "Maria"
     assert user["daily_goal_minutes"] == 45
 
 
@@ -463,12 +463,12 @@ async def test_user_update_name_only_roundtrip(client: AsyncClient) -> None:
     # Set a baseline daily_goal
     await client.patch("/v1/me", json={"daily_goal_minutes": 30})
 
-    await client.patch("/v1/me", json={"name": "Carlos"})
+    await client.patch("/v1/me", json={"first_name": "Carlos"})
 
     me_resp = await client.get("/v1/me")
     user = me_resp.json()["user"]
 
-    assert user["name"] == "Carlos"
+    assert user["first_name"] == "Carlos"
     assert user["daily_goal_minutes"] == 30
 
 

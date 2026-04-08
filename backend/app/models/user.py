@@ -29,7 +29,7 @@ class User(Base, UUIDMixin, TimestampMixin):
         String(255), unique=True, index=True, nullable=False
     )
     email: Mapped[str] = mapped_column(String(320), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    first_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     native_language: Mapped[str] = mapped_column(
         String(10), default="en", server_default="en"

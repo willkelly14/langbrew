@@ -17,7 +17,7 @@ struct UserResponse: Codable, Sendable {
     let id: String
     let supabaseUid: String
     let email: String
-    let name: String
+    let firstName: String
     let avatarUrl: String?
     let nativeLanguage: String
     let subscriptionTier: String

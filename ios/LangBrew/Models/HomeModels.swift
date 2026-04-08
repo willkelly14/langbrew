@@ -18,7 +18,7 @@ struct HomeResponse: Codable, Sendable {
 
 /// Subset of user data surfaced on the home screen.
 struct HomeUser: Codable, Sendable {
-    let name: String
+    let firstName: String
     let avatarUrl: String?
     let currentStreak: Int
     let streakWeek: [Bool]

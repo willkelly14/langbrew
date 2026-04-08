@@ -146,34 +146,7 @@ struct InterestsView: View {
     }
 }
 
-// MARK: - Interest Topic Pill
-
-private struct InterestTopicPill: View {
-    let emoji: String
-    let name: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text("\(emoji) \(name)")
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(Color.lbNearBlack)
-                .padding(.horizontal, LBTheme.Spacing.lg)
-                .padding(.vertical, 10)
-                .background(isSelected ? Color.lbHighlight : Color.lbG50)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(
-                            isSelected ? Color.lbNearBlack : Color.lbG100,
-                            lineWidth: 1.5
-                        )
-                }
-        }
-        .buttonStyle(.plain)
-    }
-}
+// InterestTopicPill is defined in OnboardingSetupView.swift as a shared component.
 
 #Preview {
     InterestsView(onboardingState: OnboardingState()) {}

@@ -20,7 +20,7 @@ class WordStats(BaseModel):
 class HomeUser(BaseModel):
     """Subset of user data needed by the home screen."""
 
-    name: str
+    first_name: str
     avatar_url: str | None
     current_streak: int
     streak_week: list[bool]

@@ -103,59 +103,7 @@ struct LanguageSelectionView: View {
     }
 }
 
-// MARK: - Language Card Row
-
-private struct LanguageCardRow: View {
-    let flag: String
-    let name: String
-    let native: String
-    let isSelected: Bool
-    var isDimmed: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                // Flag emoji
-                Text(flag)
-                    .font(.system(size: 26))
-                    .frame(width: 36, alignment: .center)
-
-                // Language info
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(name)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(isDimmed ? Color.lbG400 : Color.lbBlack)
-
-                    Text(native)
-                        .font(LBTheme.Typography.caption)
-                        .foregroundStyle(Color.lbG500)
-                }
-
-                Spacer()
-
-                // Selection circle
-                if !isDimmed {
-                    SelectionCircle(isSelected: isSelected)
-                }
-            }
-            .padding(.horizontal, LBTheme.Spacing.lg)
-            .padding(.vertical, 14)
-            .background(isSelected ? Color.lbHighlight : Color.lbWhite)
-            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-            .overlay {
-                RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                    .strokeBorder(
-                        isSelected ? Color.lbNearBlack : Color.lbG100,
-                        lineWidth: 1.5
-                    )
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(isDimmed)
-        .opacity(isDimmed ? 0.45 : 1)
-    }
-}
+// LanguageCardRow is defined in OnboardingSetupView.swift as a shared component.
 
 #Preview {
     LanguageSelectionView(onboardingState: OnboardingState()) {}

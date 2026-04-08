@@ -113,74 +113,7 @@ struct DailyGoalView: View {
     }
 }
 
-// MARK: - Goal Card Row
-
-private struct GoalCardRow: View {
-    let minutes: Int
-    let detail: String
-    let label: String
-    let badge: String?
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                // Time
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(minutes)")
-                        .font(LBTheme.serifFont(size: 26))
-                        .foregroundStyle(Color.lbBlack)
-                    Text("min")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.lbG500)
-                }
-                .frame(width: 76, alignment: .leading)
-
-                // Info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(detail)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.lbNearBlack)
-                    Text(label)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.lbG400)
-                }
-
-                Spacer()
-
-                // Selection circle
-                SelectionCircle(isSelected: isSelected)
-            }
-            .padding(.horizontal, LBTheme.Spacing.lg)
-            .padding(.vertical, 14)
-            .frame(minHeight: 56)
-            .background(isSelected ? Color.lbHighlight : Color.lbWhite)
-            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-            .overlay {
-                RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                    .strokeBorder(
-                        isSelected ? Color.lbNearBlack : Color.lbG100,
-                        lineWidth: 1.5
-                    )
-            }
-            .overlay(alignment: .topTrailing) {
-                if let badge {
-                    Text(badge)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.lbWhite)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 3)
-                        .background(Color.lbBlack)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .offset(y: -9)
-                        .padding(.trailing, LBTheme.Spacing.lg)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
+// GoalCardRow is defined in OnboardingSetupView.swift as a shared component.
 
 #Preview {
     DailyGoalView(onboardingState: OnboardingState()) {}

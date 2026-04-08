@@ -87,7 +87,7 @@ async def get_home_data(db: AsyncSession, user: User) -> HomeResponse:
     streak_week = await _build_streak_week(db, user.id, user.timezone)
 
     home_user = HomeUser(
-        name=user.name,
+        first_name=user.first_name,
         avatar_url=user.avatar_url,
         current_streak=user.current_streak,
         streak_week=streak_week,

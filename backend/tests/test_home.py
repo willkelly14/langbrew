@@ -51,7 +51,7 @@ async def test_home_new_user(client: AsyncClient) -> None:
 
     # user sub-object
     user = body["user"]
-    assert "name" in user
+    assert "first_name" in user
     assert "avatar_url" in user
     assert user["current_streak"] == 0
     assert "streak_week" in user
@@ -87,12 +87,12 @@ async def test_home_new_user_streak_week_all_false(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_home_new_user_name_is_string(client: AsyncClient) -> None:
-    """The user.name field is always a string, even when empty."""
+    """The user.first_name field is always a string, even when empty."""
     response = await client.get("/v1/home")
 
     assert response.status_code == 200
     user = response.json()["user"]
-    assert isinstance(user["name"], str)
+    assert isinstance(user["first_name"], str)
 
 
 # ---------------------------------------------------------------------------
