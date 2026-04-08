@@ -11,6 +11,11 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
 
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift.git
+    from: "2.0.0"
+
 targets:
   LangBrew:
     type: application
@@ -23,6 +28,17 @@ targets:
           - "Fonts/**"
       - path: LangBrew/Fonts
         buildPhase: resources
+    dependencies:
+      - package: Supabase
+        product: Auth
+    # TODO: Re-enable entitlements when enrolled in Apple Developer Program ($99/yr).
+    # Requires paid account for Sign in with Apple + Push Notifications capabilities.
+    # entitlements:
+    #   path: LangBrew/LangBrew.entitlements
+    #   properties:
+    #     com.apple.developer.applesignin:
+    #       - Default
+    #     aps-environment: development
     info:
       path: LangBrew/Info.plist
       properties:
@@ -32,6 +48,9 @@ targets:
           - InstrumentSans.ttf
           - InstrumentSans-Italic.ttf
         UILaunchScreen: {}
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.langbrew.app
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.langbrew.app

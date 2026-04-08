@@ -250,6 +250,18 @@ final class SettingsViewModel {
         persistSettingsUpdate(UserSettingsUpdate(notificationsEnabled: enabled))
     }
 
+    /// Updates show example sentence setting on the backend.
+    func updateShowExampleSentence(_ enabled: Bool) {
+        showExampleSentence = enabled
+        persistSettingsUpdate(UserSettingsUpdate(showExampleSentence: enabled))
+    }
+
+    /// Updates audio on reveal setting on the backend.
+    func updateAudioOnReveal(_ enabled: Bool) {
+        audioOnReveal = enabled
+        persistSettingsUpdate(UserSettingsUpdate(audioOnReveal: enabled))
+    }
+
     // MARK: - Language Actions
 
     /// Updates the CEFR level for the active language on the backend.

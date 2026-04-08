@@ -156,29 +156,35 @@ struct OnboardingInput: View {
     var keyboardType: UIKeyboardType = .default
     var textContentType: UITextContentType?
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
-        Group {
-            if isSecure {
-                SecureField(placeholder, text: $text)
-                    .textContentType(textContentType)
-            } else {
-                TextField(placeholder, text: $text)
-                    .keyboardType(keyboardType)
-                    .textContentType(textContentType)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-            }
-        }
-        .font(LBTheme.Typography.body)
-        .foregroundStyle(Color.lbNearBlack)
-        .padding(.horizontal, LBTheme.Spacing.lg)
-        .padding(.vertical, 14)
-        .background(Color.lbWhite)
-        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-        .overlay {
+        ZStack {
             RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                .strokeBorder(Color.lbG200, lineWidth: 1.5)
+                .fill(Color.lbWhite)
+            RoundedRectangle(cornerRadius: LBTheme.Radius.large)
+                .strokeBorder(isFocused ? Color.lbG400 : Color.lbG200, lineWidth: 1.5)
+
+            Group {
+                if isSecure {
+                    SecureField(placeholder, text: $text)
+                        .textContentType(textContentType)
+                } else {
+                    TextField(placeholder, text: $text)
+                        .keyboardType(keyboardType)
+                        .textContentType(textContentType)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+            }
+            .font(LBTheme.Typography.body)
+            .foregroundStyle(Color.lbNearBlack)
+            .focused($isFocused)
+            .padding(.horizontal, LBTheme.Spacing.lg)
         }
+        .frame(height: 50)
+        .contentShape(Rectangle())
+        .onTapGesture { isFocused = true }
     }
 }
 

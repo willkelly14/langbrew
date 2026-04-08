@@ -14,6 +14,7 @@ struct ProficiencyView: View {
         ("A2", "I know the basics", "I can understand simple sentences about familiar topics."),
         ("B1", "Getting comfortable", "I can read straightforward texts about everyday things."),
         ("B2", "Fairly confident", "I can read articles and stories with some effort."),
+        ("C1", "Advanced", "I can understand complex texts and express myself fluently."),
     ]
 
     private var languageName: String {

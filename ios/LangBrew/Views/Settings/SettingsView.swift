@@ -193,6 +193,9 @@ struct SettingsView: View {
                         in: 1...20
                     )
                     .labelsHidden()
+                    .onChange(of: viewModel.newWordsPerDay) { _, newValue in
+                        viewModel.updateNewWordsPerDay(newValue)
+                    }
 
                     Text("\(viewModel.newWordsPerDay)")
                         .font(.system(size: 13))
@@ -210,6 +213,9 @@ struct SettingsView: View {
                         .foregroundStyle(Color.lbNearBlack)
                 }
                 .tint(Color.lbBlack)
+                .onChange(of: viewModel.autoAdjustDifficulty) { _, newValue in
+                    viewModel.updateAutoAdjustDifficulty(newValue)
+                }
             }
         }
     }
@@ -225,6 +231,9 @@ struct SettingsView: View {
                         .foregroundStyle(Color.lbNearBlack)
                 }
                 .tint(Color.lbBlack)
+                .onChange(of: viewModel.vocabularyHighlights) { _, newValue in
+                    viewModel.updateVocabularyHighlights(newValue)
+                }
             }
 
             SettingsDivider()
@@ -236,6 +245,9 @@ struct SettingsView: View {
                         .foregroundStyle(Color.lbNearBlack)
                 }
                 .tint(Color.lbBlack)
+                .onChange(of: viewModel.autoPlayAudio) { _, newValue in
+                    viewModel.updateAutoPlayAudio(newValue)
+                }
             }
 
             SettingsDivider()
@@ -247,6 +259,9 @@ struct SettingsView: View {
                         .foregroundStyle(Color.lbNearBlack)
                 }
                 .tint(Color.lbBlack)
+                .onChange(of: viewModel.highlightFollowing) { _, newValue in
+                    viewModel.updateHighlightFollowing(newValue)
+                }
             }
         }
     }
@@ -311,6 +326,9 @@ struct SettingsView: View {
                         .foregroundStyle(Color.lbNearBlack)
                 }
                 .tint(Color.lbBlack)
+                .onChange(of: viewModel.showExampleSentence) { _, newValue in
+                    viewModel.updateShowExampleSentence(newValue)
+                }
             }
 
             SettingsDivider()
@@ -322,6 +340,9 @@ struct SettingsView: View {
                         .foregroundStyle(Color.lbNearBlack)
                 }
                 .tint(Color.lbBlack)
+                .onChange(of: viewModel.audioOnReveal) { _, newValue in
+                    viewModel.updateAudioOnReveal(newValue)
+                }
             }
         }
     }
@@ -337,6 +358,9 @@ struct SettingsView: View {
                         .foregroundStyle(Color.lbNearBlack)
                 }
                 .tint(Color.lbBlack)
+                .onChange(of: viewModel.notificationsEnabled) { _, newValue in
+                    viewModel.updateNotificationsEnabled(newValue)
+                }
             }
 
             if viewModel.notificationsEnabled {

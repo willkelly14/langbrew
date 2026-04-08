@@ -27,6 +27,12 @@ struct ContentView: View {
         .task {
             await coordinator.checkInitialState()
         }
+        .onOpenURL { url in
+            Task {
+                try? await coordinator.authManager.handleOAuthCallback(url: url)
+                await coordinator.handlePostAuthentication()
+            }
+        }
     }
 
     /// A minimal loading screen shown while the initial state check runs.
