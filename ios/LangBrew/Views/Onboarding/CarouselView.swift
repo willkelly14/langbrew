@@ -455,7 +455,8 @@ private struct CarouselC3Interests: View {
                     pills: ["\u{1F4DC} History", "\u{1F373} Food", "B1"]
                 )
             }
-            .padding(.horizontal, 30)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 320)
 
             Spacer()
         }
@@ -504,7 +505,7 @@ private struct C3PassageCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
             Text(title)
-                .font(.custom("Georgia", size: 13).weight(.medium))
+                .font(LBTheme.serifFont(size: 13))
                 .foregroundStyle(Color.lbNearBlack)
                 .lineSpacing(2)
 
@@ -521,7 +522,7 @@ private struct C3PassageCard: View {
             }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.lbWhite)
         .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
         .overlay {
@@ -584,32 +585,21 @@ private struct CarouselC4Remember: View {
             // Mini flashcard
             VStack(spacing: 4) {
                 Text("mercado")
-                    .font(.custom("Georgia", size: 20))
+                    .font(LBTheme.serifFont(size: 20))
                     .foregroundStyle(Color.lbNearBlack)
                 Text("market")
                     .font(.system(size: 13))
                     .foregroundStyle(Color.lbG400)
             }
-            .frame(maxWidth: .infinity)
             .padding(.vertical, LBTheme.Spacing.lg)
+            .padding(.horizontal, 40)
             .background(Color.lbWhite)
             .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
             .overlay {
                 RoundedRectangle(cornerRadius: LBTheme.Radius.large)
                     .strokeBorder(Color.lbG100, lineWidth: 1.5)
             }
-            .padding(.horizontal, 60)
             .padding(.bottom, LBTheme.Spacing.sm)
-
-            // Progress dots
-            HStack(spacing: 5) {
-                ForEach(0..<5, id: \.self) { i in
-                    Circle()
-                        .fill(i < 3 ? Color.lbBlack : Color.lbG200)
-                        .frame(width: 8, height: 8)
-                }
-            }
-            .padding(.bottom, 10)
 
             Text("From your reading, straight to your review deck.")
                 .font(.system(size: 13))
@@ -637,49 +627,65 @@ private struct C4ForgettingCurve: View {
             context.draw(Text("Time \u{2192}").font(labelFont).foregroundColor(Color.lbG400),
                          at: CGPoint(x: w - 25, y: h - 8), anchor: .center)
 
-            // Forgetting curve (dashed, steep decline)
+            // Forgetting curve (dashed) — matches mockup SVG exactly:
+            // M40 25 C60 55,80 75,100 90 C130 110,170 132,200 140 C230 145,255 148,275 150
             var forgetting = Path()
             forgetting.move(to: CGPoint(x: 40, y: 25))
-            forgetting.addCurve(
-                to: CGPoint(x: w - 25, y: h - 30),
-                control1: CGPoint(x: 80, y: 75),
-                control2: CGPoint(x: 170, y: h - 48)
-            )
+            forgetting.addCurve(to: CGPoint(x: 100, y: 90),
+                                control1: CGPoint(x: 60, y: 55),
+                                control2: CGPoint(x: 80, y: 75))
+            forgetting.addCurve(to: CGPoint(x: 200, y: 140),
+                                control1: CGPoint(x: 130, y: 110),
+                                control2: CGPoint(x: 170, y: 132))
+            forgetting.addCurve(to: CGPoint(x: 275, y: 150),
+                                control1: CGPoint(x: 230, y: 145),
+                                control2: CGPoint(x: 255, y: 148))
             context.stroke(forgetting,
                            with: .color(Color.lbG200),
                            style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
 
-            // Shaded area fill
-            var shaded = Path()
-            // Retention curve path
-            let retentionPoints: [(CGFloat, CGFloat)] = [
-                (40, 25), (50, 40), (58, 52), (67, 60),
-                (67, 26), (77, 40), (90, 52), (104, 57),
-                (104, 26), (114, 36), (132, 44), (147, 49),
-                (147, 26), (162, 34), (180, 40), (201, 44),
-                (201, 26), (218, 32), (242, 36), (257, 38),
-                (257, 26), (275, 28),
-            ]
-            shaded.move(to: CGPoint(x: retentionPoints[0].0, y: retentionPoints[0].1))
-            for i in 1..<retentionPoints.count {
-                shaded.addLine(to: CGPoint(x: retentionPoints[i].0, y: retentionPoints[i].1))
-            }
-            // Close via forgetting curve
-            shaded.addLine(to: CGPoint(x: 275, y: h - 30))
-            shaded.addCurve(
-                to: CGPoint(x: 40, y: 25),
-                control1: CGPoint(x: 170, y: h - 48),
-                control2: CGPoint(x: 80, y: 75)
-            )
+            // Retention curve with smooth bezier declines + vertical review jumps
+            // Matches mockup SVG: M40 25 C50 40,58 52,67 60 L67 26 C77 40,90 52,104 57 ...
+            var retention = Path()
+            retention.move(to: CGPoint(x: 40, y: 25))
+            retention.addCurve(to: CGPoint(x: 67, y: 60),
+                               control1: CGPoint(x: 50, y: 40),
+                               control2: CGPoint(x: 58, y: 52))
+            retention.addLine(to: CGPoint(x: 67, y: 26))
+            retention.addCurve(to: CGPoint(x: 104, y: 57),
+                               control1: CGPoint(x: 77, y: 40),
+                               control2: CGPoint(x: 90, y: 52))
+            retention.addLine(to: CGPoint(x: 104, y: 26))
+            retention.addCurve(to: CGPoint(x: 147, y: 49),
+                               control1: CGPoint(x: 114, y: 36),
+                               control2: CGPoint(x: 132, y: 44))
+            retention.addLine(to: CGPoint(x: 147, y: 26))
+            retention.addCurve(to: CGPoint(x: 201, y: 44),
+                               control1: CGPoint(x: 162, y: 34),
+                               control2: CGPoint(x: 180, y: 40))
+            retention.addLine(to: CGPoint(x: 201, y: 26))
+            retention.addCurve(to: CGPoint(x: 257, y: 38),
+                               control1: CGPoint(x: 218, y: 32),
+                               control2: CGPoint(x: 242, y: 36))
+            retention.addLine(to: CGPoint(x: 257, y: 26))
+            retention.addLine(to: CGPoint(x: 275, y: 28))
+
+            // Shaded area between retention and forgetting curves
+            var shaded = retention
+            shaded.addLine(to: CGPoint(x: 275, y: 150))
+            shaded.addCurve(to: CGPoint(x: 200, y: 140),
+                            control1: CGPoint(x: 255, y: 148),
+                            control2: CGPoint(x: 230, y: 145))
+            shaded.addCurve(to: CGPoint(x: 100, y: 90),
+                            control1: CGPoint(x: 170, y: 132),
+                            control2: CGPoint(x: 130, y: 110))
+            shaded.addCurve(to: CGPoint(x: 40, y: 25),
+                            control1: CGPoint(x: 80, y: 75),
+                            control2: CGPoint(x: 60, y: 55))
             shaded.closeSubpath()
             context.fill(shaded, with: .color(Color.lbG100.opacity(0.45)))
 
-            // Retention curve (solid, with review bumps)
-            var retention = Path()
-            retention.move(to: CGPoint(x: 40, y: 25))
-            for i in 1..<retentionPoints.count {
-                retention.addLine(to: CGPoint(x: retentionPoints[i].0, y: retentionPoints[i].1))
-            }
+            // Draw retention curve on top
             context.stroke(retention,
                            with: .color(Color.lbBlack),
                            style: StrokeStyle(lineWidth: 2.5))
@@ -700,7 +706,7 @@ private struct C4ForgettingCurve: View {
             // "review" label
             context.draw(
                 Text("review").font(.system(size: 8, weight: .semibold)).foregroundColor(Color.lbG500),
-                at: CGPoint(x: 63, y: 16),
+                at: CGPoint(x: 55, y: 16),
                 anchor: .center
             )
         }
@@ -729,8 +735,8 @@ private struct CarouselC5Talk: View {
             Spacer()
 
             // Chat card
-            VStack(alignment: .leading, spacing: 14) {
-                // Topic pill
+            VStack(spacing: 14) {
+                // Topic pill (centered)
                 Text("Weekend Plans")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Color.lbG500)
@@ -742,11 +748,6 @@ private struct CarouselC5Talk: View {
 
                 // Chat bubbles
                 VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
-                    // Mia label
-                    Text("Mia")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.lbG400)
-
                     // AI bubble
                     HStack {
                         Text("\u{00BF}Qu\u{00E9} hiciste el fin de semana?")
