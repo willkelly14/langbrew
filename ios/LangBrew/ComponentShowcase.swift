@@ -195,9 +195,9 @@ struct ComponentShowcase: View {
     private var statsSection: some View {
         ShowcaseSection(title: "Stat Cards") {
             HStack(spacing: LBTheme.Spacing.md) {
-                LBStatCard(value: 247, label: "Words", icon: "textformat.abc")
-                LBStatCard(value: 38, label: "Learning", icon: "brain")
-                LBStatCard(value: 53, label: "Mastered", icon: "checkmark.seal")
+                LBStatCard(value: 247, label: "Words")
+                LBStatCard(value: 38, label: "Learning")
+                LBStatCard(value: 53, label: "Mastered")
             }
         }
     }

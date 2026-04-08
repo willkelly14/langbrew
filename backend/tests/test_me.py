@@ -373,3 +373,115 @@ async def test_get_usage_idempotent(client: AsyncClient) -> None:
     assert resp1.status_code == 200
     assert resp2.status_code == 200
     assert resp1.json()["period_start"] == resp2.json()["period_start"]
+
+
+# ---------------------------------------------------------------------------
+# Round-trip: settings
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_settings_update_roundtrip(client: AsyncClient) -> None:
+    """PATCH /v1/me/settings persists values that GET /v1/me then reflects."""
+    patch_resp = await client.patch(
+        "/v1/me/settings",
+        json={
+            "reading_theme": "dark",
+            "font_size": 20,
+            "notifications_enabled": False,
+            "voice_speed": 1.5,
+        },
+    )
+    assert patch_resp.status_code == 200
+
+    # Re-fetch the full profile
+    me_resp = await client.get("/v1/me")
+    assert me_resp.status_code == 200
+    settings = me_resp.json()["settings"]
+
+    assert settings["reading_theme"] == "dark"
+    assert settings["font_size"] == 20
+    assert settings["notifications_enabled"] is False
+    assert settings["voice_speed"] == 1.5
+
+
+@pytest.mark.anyio
+async def test_settings_update_partial_roundtrip(client: AsyncClient) -> None:
+    """A partial PATCH only changes the specified fields; others keep defaults."""
+    # First confirm the default font_size
+    me_resp_before = await client.get("/v1/me")
+    default_font_size = me_resp_before.json()["settings"]["font_size"]
+
+    await client.patch("/v1/me/settings", json={"notifications_enabled": False})
+
+    me_resp_after = await client.get("/v1/me")
+    settings = me_resp_after.json()["settings"]
+
+    assert settings["notifications_enabled"] is False
+    # Untouched field is unchanged
+    assert settings["font_size"] == default_font_size
+
+
+@pytest.mark.anyio
+async def test_settings_multiple_updates_roundtrip(client: AsyncClient) -> None:
+    """Multiple sequential PATCH calls accumulate correctly."""
+    await client.patch("/v1/me/settings", json={"font_size": 14})
+    await client.patch("/v1/me/settings", json={"reading_theme": "sepia"})
+
+    me_resp = await client.get("/v1/me")
+    settings = me_resp.json()["settings"]
+
+    assert settings["font_size"] == 14
+    assert settings["reading_theme"] == "sepia"
+
+
+# ---------------------------------------------------------------------------
+# Round-trip: user profile
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_user_update_roundtrip(client: AsyncClient) -> None:
+    """PATCH /v1/me with name and daily_goal → GET /v1/me reflects both changes."""
+    patch_resp = await client.patch(
+        "/v1/me",
+        json={"name": "Maria", "daily_goal_minutes": 45},
+    )
+    assert patch_resp.status_code == 200
+
+    me_resp = await client.get("/v1/me")
+    assert me_resp.status_code == 200
+    user = me_resp.json()["user"]
+
+    assert user["name"] == "Maria"
+    assert user["daily_goal_minutes"] == 45
+
+
+@pytest.mark.anyio
+async def test_user_update_name_only_roundtrip(client: AsyncClient) -> None:
+    """PATCH /v1/me with only name does not reset other fields."""
+    # Set a baseline daily_goal
+    await client.patch("/v1/me", json={"daily_goal_minutes": 30})
+
+    await client.patch("/v1/me", json={"name": "Carlos"})
+
+    me_resp = await client.get("/v1/me")
+    user = me_resp.json()["user"]
+
+    assert user["name"] == "Carlos"
+    assert user["daily_goal_minutes"] == 30
+
+
+@pytest.mark.anyio
+async def test_user_update_onboarding_roundtrip(client: AsyncClient) -> None:
+    """PATCH /v1/me onboarding fields are persisted and visible in GET /v1/me."""
+    await client.patch(
+        "/v1/me",
+        json={"onboarding_completed": True, "onboarding_step": 4},
+    )
+
+    me_resp = await client.get("/v1/me")
+    user = me_resp.json()["user"]
+
+    assert user["onboarding_completed"] is True
+    assert user["onboarding_step"] == 4

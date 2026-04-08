@@ -105,6 +105,20 @@ final class AppCoordinator {
         }
     }
 
+    // MARK: - Refresh User
+
+    /// Re-fetches the current user profile from the backend and updates
+    /// the cached `currentUser`. Called after mutations (e.g. language switch,
+    /// profile update) so other screens can observe the change.
+    func refreshUser() async {
+        do {
+            let me = try await UserService.shared.getMe()
+            currentUser = me
+        } catch {
+            loadError = error.localizedDescription
+        }
+    }
+
     // MARK: - Transition to Main
 
     /// Called when the user finishes onboarding (taps "Start Learning").

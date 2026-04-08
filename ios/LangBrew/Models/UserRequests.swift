@@ -34,6 +34,54 @@ struct UserLanguageCreate: Codable, Sendable {
     let interests: [String]
 }
 
+// MARK: - User Settings Update (PATCH /v1/me/settings)
+
+/// Request body for `PATCH /v1/me/settings`. All fields are optional;
+/// only non-nil fields are sent to the server.
+struct UserSettingsUpdate: Codable, Sendable {
+    // Reading
+    var readingTheme: String?
+    var readingFont: String?
+    var fontSize: Int?
+    var lineSpacing: String?
+    var vocabularyHighlights: Bool?
+    var autoPlayAudio: Bool?
+    var highlightFollowing: Bool?
+    var preferredVoiceId: String?
+    var voiceSpeed: Double?
+
+    // Talk
+    var talkVoiceStyle: String?
+    var talkCorrectionStyle: String?
+    var showTranscript: Bool?
+    var autoSaveWords: Bool?
+    var sessionLengthMinutes: Int?
+
+    // Flashcards
+    var reviewsPerSession: Int?
+    var showExampleSentence: Bool?
+    var audioOnReveal: Bool?
+
+    // Notifications
+    var notificationsEnabled: Bool?
+    var reminderTime: String?
+    var streakAlerts: Bool?
+    var reviewReminder: Bool?
+}
+
+// MARK: - User Language Update (PATCH /v1/me/languages/:id)
+
+/// Request body for `PATCH /v1/me/languages/:id`. All fields are optional;
+/// only non-nil fields are sent to the server.
+struct UserLanguageUpdate: Codable, Sendable {
+    var cefrLevel: String?
+    var interests: [String]?
+    var isActive: Bool?
+    var readingLevel: String?
+    var speakingLevel: String?
+    var listeningLevel: String?
+}
+
 // MARK: - Device Token Create (POST /v1/me/devices)
 
 /// Request body for `POST /v1/me/devices`.

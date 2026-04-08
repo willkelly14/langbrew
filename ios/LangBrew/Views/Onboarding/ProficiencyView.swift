@@ -27,7 +27,7 @@ struct ProficiencyView: View {
         if let code = onboardingState.selectedLanguage {
             return FlagMapper.flag(for: code)
         }
-        return "\u{1F310}"
+        return "🌐"
     }
 
     private var canProceed: Bool {

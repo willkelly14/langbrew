@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.models.usage_meter import UsageMeter
     from app.models.user_language import UserLanguage
     from app.models.user_settings import UserSettings
+    from app.models.user_streak import UserStreak
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -79,6 +80,12 @@ class User(Base, UUIDMixin, TimestampMixin):
         "UsageMeter",
         back_populates="user",
         lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    streaks: Mapped[list[UserStreak]] = relationship(
+        "UserStreak",
+        back_populates="user",
+        lazy="noload",
         cascade="all, delete-orphan",
     )
 

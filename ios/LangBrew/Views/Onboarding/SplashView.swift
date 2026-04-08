@@ -23,15 +23,12 @@ struct SplashView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: LBTheme.Spacing.lg) {
-                // Logo placeholder (120x120)
-                RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                    .fill(Color.lbBlack)
+                // Logo image (120x120)
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: 120, height: 120)
-                    .overlay {
-                        Text("lb")
-                            .font(LBTheme.serifFont(size: 44))
-                            .foregroundStyle(Color.lbLinen)
-                    }
+                    .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
                     .opacity(logoOpacity * (isPulsing ? 0.7 : 1.0))
                     .scaleEffect(logoScale)
                     .offset(y: logoOffsetY)

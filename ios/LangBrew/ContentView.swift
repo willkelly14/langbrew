@@ -20,7 +20,7 @@ struct ContentView: View {
                     coordinator: coordinator
                 )
             case .main:
-                MainTabView()
+                MainTabView(coordinator: coordinator)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: coordinator.phase)

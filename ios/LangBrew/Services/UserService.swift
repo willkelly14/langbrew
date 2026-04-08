@@ -60,6 +60,41 @@ actor UserService {
         try await api.post("/me/languages", body: create)
     }
 
+    // MARK: - Home
+
+    /// Fetches the aggregated home screen data.
+    ///
+    /// `GET /v1/home`
+    func getHome() async throws -> HomeResponse {
+        try await api.get("/home")
+    }
+
+    // MARK: - Settings
+
+    /// Updates the current user's settings. Only non-nil fields are applied.
+    ///
+    /// `PATCH /v1/me/settings`
+    func updateSettings(_ update: UserSettingsUpdate) async throws -> UserSettingsResponse {
+        try await api.patch("/me/settings", body: update)
+    }
+
+    // MARK: - Language Updates
+
+    /// Updates a specific language record for the current user.
+    /// Can change CEFR level, interests, or set as active.
+    ///
+    /// `PATCH /v1/me/languages/:id`
+    func updateLanguage(id: String, _ update: UserLanguageUpdate) async throws -> UserLanguageResponse {
+        try await api.patch("/me/languages/\(id)", body: update)
+    }
+
+    /// Lists all target languages for the current user.
+    ///
+    /// `GET /v1/me/languages`
+    func listLanguages() async throws -> [UserLanguageResponse] {
+        try await api.get("/me/languages")
+    }
+
     // MARK: - Onboarding Completion
 
     /// Marks onboarding as complete. Sends the daily goal and sets

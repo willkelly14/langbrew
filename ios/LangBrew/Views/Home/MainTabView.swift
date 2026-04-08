@@ -1,16 +1,21 @@
 import SwiftUI
 
 /// Main app shell with the 4-tab navigation bar.
-/// Each tab shows a placeholder view for now.
+/// Home tab uses a NavigationStack for push navigation to Settings.
+/// Other tabs remain as placeholders for now.
 struct MainTabView: View {
+    let coordinator: AppCoordinator
     @State private var selectedTab: LBTab = .home
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        VStack(spacing: 0) {
+            // Content area
             Group {
                 switch selectedTab {
                 case .home:
-                    HomePlaceholderView()
+                    NavigationStack {
+                        HomeView(coordinator: coordinator)
+                    }
                 case .library:
                     PlaceholderTabView(title: "Library", icon: "books.vertical", subtitle: "Your passages and books will appear here.")
                 case .talk:
@@ -19,66 +24,14 @@ struct MainTabView: View {
                     PlaceholderTabView(title: "Flashcards", icon: "rectangle.on.rectangle", subtitle: "Spaced repetition review sessions coming soon.")
                 }
             }
+            .frame(maxHeight: .infinity)
 
+            // Tab bar pinned to bottom
             LBTabBar(selectedTab: $selectedTab)
+                .padding(.bottom, 0)
         }
-    }
-}
-
-// MARK: - Home Placeholder
-
-private struct HomePlaceholderView: View {
-    var body: some View {
-        ZStack {
-            Color.lbLinen
-                .ignoresSafeArea()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: LBTheme.Spacing.xl) {
-                    // Greeting
-                    HStack {
-                        VStack(alignment: .leading, spacing: LBTheme.Spacing.xs) {
-                            Text("Good morning")
-                                .font(LBTheme.Typography.title)
-                                .foregroundStyle(Color.lbBlack)
-
-                            Text("Welcome to LangBrew")
-                                .font(LBTheme.Typography.body)
-                                .foregroundStyle(Color.lbG500)
-                        }
-
-                        Spacer()
-
-                        LBAvatarCircle(name: "User", size: 40, showBorder: true)
-                    }
-
-                    // Streak preview
-                    LBCard {
-                        VStack(spacing: LBTheme.Spacing.md) {
-                            HStack(spacing: LBTheme.Spacing.sm) {
-                                Text("0 day streak")
-                                    .font(LBTheme.Typography.bodyMedium)
-                                    .foregroundStyle(Color.lbBlack)
-                            }
-
-                            LBStreakDots(days: [false, false, false, false, false, false, false])
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-
-                    // Placeholder content
-                    LBEmptyState(
-                        icon: "book",
-                        title: "Ready to start",
-                        subtitle: "Your personalized passages and learning content will appear here once you begin reading.",
-                        buttonTitle: nil
-                    )
-                }
-                .padding(.horizontal, LBTheme.Spacing.lg)
-                .padding(.top, LBTheme.Spacing.lg)
-                .padding(.bottom, 100)
-            }
-        }
+        .ignoresSafeArea(.keyboard)
+        .edgesIgnoringSafeArea(.bottom)
     }
 }
 
@@ -107,11 +60,10 @@ private struct PlaceholderTabView: View {
                 Spacer()
                 Spacer()
             }
-            .padding(.bottom, 80)
         }
     }
 }
 
 #Preview {
-    MainTabView()
+    MainTabView(coordinator: AppCoordinator())
 }

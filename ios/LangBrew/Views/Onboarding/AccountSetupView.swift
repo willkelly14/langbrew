@@ -11,6 +11,7 @@ struct AccountSetupView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    @State private var name = ""
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
@@ -67,6 +68,15 @@ struct AccountSetupView: View {
 
                         // Divider
                         AuthDivider()
+
+                        // Name input
+                        OnboardingInput(
+                            placeholder: "Full name",
+                            text: $name,
+                            textContentType: .name
+                        )
+                        .textInputAutocapitalization(.words)
+                        .padding(.bottom, 10)
 
                         // Email input
                         OnboardingInput(
@@ -137,6 +147,12 @@ struct AccountSetupView: View {
         try? await Task.sleep(for: .milliseconds(500))
         perform()
 
+        // Save the name to the backend if provided (email sign-up flow)
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        if !trimmedName.isEmpty {
+            _ = try? await UserService.shared.updateMe(UserUpdate(name: trimmedName))
+        }
+
         // Fetch user profile from backend
         if let coordinator {
             await coordinator.handlePostAuthentication()
@@ -154,6 +170,10 @@ struct AccountSetupView: View {
     }
 
     private func handleEmailSignUp() async {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Please enter your name."
+            return
+        }
         guard !email.isEmpty else {
             errorMessage = "Please enter your email address."
             return

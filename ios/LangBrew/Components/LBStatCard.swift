@@ -1,51 +1,45 @@
 import SwiftUI
 
 /// A compact stat display card showing a large number with a label.
+/// Matches the mockup: white bg, 10px radius, 10px padding, 24px serif number, 11px label.
 struct LBStatCard: View {
     let value: String
     let label: String
-    let icon: String?
 
-    init(value: String, label: String, icon: String? = nil) {
+    init(value: String, label: String) {
         self.value = value
         self.label = label
-        self.icon = icon
     }
 
     /// Convenience initializer for integer values.
-    init(value: Int, label: String, icon: String? = nil) {
+    init(value: Int, label: String) {
         self.value = "\(value)"
         self.label = label
-        self.icon = icon
     }
 
     var body: some View {
-        LBCard(padding: LBTheme.Spacing.md) {
-            VStack(spacing: LBTheme.Spacing.xs) {
-                if let icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.lbG400)
-                }
+        VStack(spacing: LBTheme.Spacing.xs) {
+            Text(value)
+                .font(LBTheme.serifFont(size: 24))
+                .foregroundStyle(Color.lbBlack)
 
-                Text(value)
-                    .font(LBTheme.Typography.title)
-                    .foregroundStyle(Color.lbBlack)
-
-                Text(label)
-                    .font(LBTheme.Typography.caption)
-                    .foregroundStyle(Color.lbG500)
-            }
-            .frame(maxWidth: .infinity)
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.lbG500)
         }
+        .frame(maxWidth: .infinity)
+        .padding(10)
+        .background(Color.lbWhite)
+        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.card))
+        .lbShadow(LBTheme.Shadow.card)
     }
 }
 
 #Preview {
     HStack(spacing: LBTheme.Spacing.md) {
-        LBStatCard(value: 247, label: "Words", icon: "textformat.abc")
-        LBStatCard(value: 38, label: "Learning", icon: "brain")
-        LBStatCard(value: 53, label: "Mastered", icon: "checkmark.seal")
+        LBStatCard(value: 247, label: "Words")
+        LBStatCard(value: 38, label: "Learning")
+        LBStatCard(value: 53, label: "Mastered")
     }
     .padding()
     .background(Color.lbLinen)
