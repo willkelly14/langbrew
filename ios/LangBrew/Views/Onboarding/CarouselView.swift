@@ -30,41 +30,67 @@ struct CarouselView: View {
                     onRight: onSkip
                 )
 
-                // Pages
-                TabView(selection: $currentPage) {
-                    CarouselC0Science()
-                        .tag(0)
-                    CarouselC1Reading()
-                        .tag(1)
-                    CarouselC2Level()
-                        .tag(2)
-                    CarouselC3Interests()
-                        .tag(3)
-                    CarouselC4Remember()
-                        .tag(4)
-                    CarouselC5Talk()
-                        .tag(5)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                ZStack(alignment: .topTrailing) {
+                    // C0 ripple circles — placed outside TabView to avoid clipping
+                    if currentPage == 0 {
+                        C0RippleCircles()
+                            .offset(x: 60, y: -30)
+                    }
 
-                // Bottom section
-                VStack(spacing: LBTheme.Spacing.lg) {
-                    CarouselDots(count: pageCount, activeIndex: currentPage)
-
-                    OnboardingCTA(
-                        currentPage == 5 ? "Set up my plan" : "Next"
-                    ) {
-                        if currentPage < pageCount - 1 {
-                            withAnimation { currentPage += 1 }
-                        } else {
-                            onComplete()
+                    VStack(spacing: 0) {
+                        // Pages
+                        TabView(selection: $currentPage) {
+                            CarouselC0Science()
+                                .tag(0)
+                            CarouselC1Reading()
+                                .tag(1)
+                            CarouselC2Level()
+                                .tag(2)
+                            CarouselC3Interests()
+                                .tag(3)
+                            CarouselC4Remember()
+                                .tag(4)
+                            CarouselC5Talk()
+                                .tag(5)
                         }
+                        .tabViewStyle(.page(indexDisplayMode: .never))
+
+                        // Bottom section
+                        VStack(spacing: LBTheme.Spacing.lg) {
+                            CarouselDots(count: pageCount, activeIndex: currentPage)
+
+                            OnboardingCTA(
+                                currentPage == 5 ? "Set up my plan" : "Next"
+                            ) {
+                                if currentPage < pageCount - 1 {
+                                    withAnimation { currentPage += 1 }
+                                } else {
+                                    onComplete()
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, LBTheme.Spacing.md)
                     }
                 }
-                .padding(.horizontal, 30)
-                .padding(.bottom, LBTheme.Spacing.md)
             }
         }
+    }
+}
+
+// MARK: - C0: Ripple Circles (rendered outside TabView to avoid clipping)
+
+private struct C0RippleCircles: View {
+    var body: some View {
+        ZStack {
+            ForEach(Array([340, 480, 640, 820].enumerated()), id: \.offset) { index, radius in
+                Circle()
+                    .stroke(Color.lbG300.opacity([0.5, 0.35, 0.22, 0.12][index]), lineWidth: [1.2, 1.2, 1.0, 1.0][index])
+                    .frame(width: CGFloat(radius), height: CGFloat(radius))
+            }
+        }
+        .frame(width: 0, height: 0)
+        .allowsHitTesting(false)
     }
 }
 
@@ -73,28 +99,11 @@ struct CarouselView: View {
 private struct CarouselC0Science: View {
     var body: some View {
         VStack(spacing: 0) {
-            // Ripples + text area, centered
-            ZStack {
-                // Concentric ripple circles from top center
-                VStack {
-                    GeometryReader { geometry in
-                        let centerX = geometry.size.width / 2
-                        ZStack {
-                            ForEach(Array([200, 280, 370, 470].enumerated()), id: \.offset) { index, radius in
-                                Circle()
-                                    .stroke(Color.lbG300.opacity([0.5, 0.35, 0.22, 0.12][index]), lineWidth: 1.2)
-                                    .frame(width: CGFloat(radius), height: CGFloat(radius))
-                                    .position(x: centerX, y: 0)
-                            }
-                        }
-                    }
-                }
+            // Text content, centered vertically
+            VStack(spacing: LBTheme.Spacing.md) {
+                Spacer()
 
-                // Text content
-                VStack(spacing: LBTheme.Spacing.md) {
-                    Spacer()
-
-                    Text("You don't learn\na language.\nYou acquire it.")
+                Text("You don't learn\na language.\nYou acquire it.")
                         .font(LBTheme.serifFont(size: 32))
                         .foregroundStyle(Color.lbBlack)
                         .multilineTextAlignment(.center)
@@ -107,10 +116,9 @@ private struct CarouselC0Science: View {
                         .lineSpacing(3)
                         .frame(maxWidth: 320)
 
-                    Spacer()
-                }
-                .padding(.horizontal, 30)
+                Spacer()
             }
+            .padding(.horizontal, 30)
 
             // Citation
             Text("BACKED BY 40 YEARS OF RESEARCH")
