@@ -17,14 +17,11 @@ struct WelcomeView: View {
                         Spacer(minLength: LBTheme.Spacing.xxl)
 
                         // Logo
-                        RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                            .fill(Color.lbBlack)
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFit()
                             .frame(width: 80, height: 80)
-                            .overlay {
-                                Text("lb")
-                                    .font(LBTheme.serifFont(size: 30))
-                                    .foregroundStyle(Color.lbLinen)
-                            }
+                            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
                             .padding(.bottom, LBTheme.Spacing.md)
 
                         // Tag
@@ -60,8 +57,6 @@ struct WelcomeView: View {
 
                 // Bottom section
                 VStack(spacing: LBTheme.Spacing.sm) {
-                    OnboardingCTA("Get Started", action: onGetStarted)
-
                     Button(action: onSignIn) {
                         Text("Already have an account? ")
                             .font(.system(size: 14))
@@ -70,9 +65,10 @@ struct WelcomeView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color.lbG400)
                     }
-                    .padding(.bottom, LBTheme.Spacing.sm)
+
+                    OnboardingCTA("Get Started", action: onGetStarted)
                 }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, LBTheme.Spacing.xl)
                 .padding(.bottom, LBTheme.Spacing.md)
             }
         }
