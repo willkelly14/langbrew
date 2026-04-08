@@ -5,6 +5,7 @@ import SwiftUI
 struct CarouselView: View {
     let onComplete: () -> Void
     let onSkip: () -> Void
+    var resetToken: Int = 0
 
     @Environment(\.dismiss) private var dismiss
     @State private var currentPage = 0
@@ -54,6 +55,7 @@ struct CarouselView: View {
                                 .tag(5)
                         }
                         .tabViewStyle(.page(indexDisplayMode: .never))
+                        .id(resetToken)
 
                         // Bottom section
                         VStack(spacing: LBTheme.Spacing.lg) {
@@ -74,6 +76,9 @@ struct CarouselView: View {
                     }
                 }
             }
+        }
+        .task(id: resetToken) {
+            currentPage = 0
         }
     }
 }
