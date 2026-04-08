@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine
 from app.core.redis import redis_client
-from app.routers import health, home, me
+from app.routers import health, home, me, passages, vocabulary
 
 logger = structlog.stdlib.get_logger()
 
@@ -50,3 +50,5 @@ app.add_middleware(
 app.include_router(health.router, prefix=settings.API_V1_PREFIX)
 app.include_router(home.router, prefix=settings.API_V1_PREFIX)
 app.include_router(me.router, prefix=settings.API_V1_PREFIX)
+app.include_router(passages.router, prefix=settings.API_V1_PREFIX)
+app.include_router(vocabulary.router, prefix=settings.API_V1_PREFIX)

@@ -41,3 +41,52 @@ class LineSpacing(enum.StrEnum):
     COMPACT = "compact"
     NORMAL = "normal"
     RELAXED = "relaxed"
+
+
+class PassageStyle(enum.StrEnum):
+    """Writing style for AI-generated passages."""
+
+    ARTICLE = "article"
+    DIALOGUE = "dialogue"
+    STORY = "story"
+    LETTER = "letter"
+
+
+class PassageLength(enum.StrEnum):
+    """Desired length for AI-generated passages."""
+
+    SHORT = "short"
+    MEDIUM = "medium"
+    LONG = "long"
+
+
+class VocabularyType(enum.StrEnum):
+    """Type of vocabulary item."""
+
+    WORD = "word"
+    PHRASE = "phrase"
+    SENTENCE = "sentence"
+
+
+class VocabularyStatus(enum.StrEnum):
+    """Learning status of a vocabulary item."""
+
+    NEW = "new"
+    LEARNING = "learning"
+    KNOWN = "known"
+    MASTERED = "mastered"
+
+
+class SourceType(enum.StrEnum):
+    """Origin of a vocabulary encounter."""
+
+    PASSAGE = "passage"
+    BOOK_CHAPTER = "book_chapter"
+    CONVERSATION = "conversation"
+
+
+class GenerateMode(enum.StrEnum):
+    """Passage generation mode."""
+
+    AUTO = "auto"
+    CUSTOM = "custom"

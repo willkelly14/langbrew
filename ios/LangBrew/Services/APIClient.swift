@@ -71,6 +71,9 @@ enum APIError: Error, Sendable {
 
     /// No access token available -- user needs to authenticate.
     case unauthorized
+
+    /// Free tier usage limit exceeded (HTTP 402).
+    case usageLimitExceeded(resource: String, limit: Int, used: Int)
 }
 
 extension APIError: LocalizedError {
@@ -86,8 +89,18 @@ extension APIError: LocalizedError {
             return "Failed to parse response: \(underlying.localizedDescription)"
         case .unauthorized:
             return "Please sign in to continue."
+        case .usageLimitExceeded(let resource, _, _):
+            return "Monthly \(resource) limit reached. Upgrade to continue."
         }
     }
+}
+
+// MARK: - SSE Event
+
+/// A single Server-Sent Event parsed from a streaming response.
+struct SSEEvent: Sendable {
+    let event: String?
+    let data: String
 }
 
 // MARK: - HTTP Method
@@ -178,6 +191,108 @@ actor APIClient {
         let _: EmptyResponse = try await request(method: .delete, path: path, body: body)
     }
 
+    // MARK: - SSE Streaming
+
+    /// Streams Server-Sent Events from a POST endpoint.
+    /// Used for passage generation and other streaming responses.
+    func stream(
+        _ path: String,
+        body: some Encodable & Sendable
+    ) -> AsyncThrowingStream<SSEEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let url = baseURL.appendingPathComponent(path)
+                    var urlRequest = URLRequest(url: url)
+                    urlRequest.httpMethod = HTTPMethod.post.rawValue
+                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+
+                    if let token = await AuthManager.shared.accessToken {
+                        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    } else {
+                        continuation.finish(throwing: APIError.unauthorized)
+                        return
+                    }
+
+                    urlRequest.httpBody = try encoder.encode(body)
+
+                    let (bytes, response) = try await session.bytes(for: urlRequest)
+
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        continuation.finish(throwing: APIError.network(underlying: URLError(.badServerResponse)))
+                        return
+                    }
+
+                    guard (200..<300).contains(httpResponse.statusCode) else {
+                        // For non-streaming error responses, collect the body.
+                        var errorData = Data()
+                        for try await byte in bytes {
+                            errorData.append(byte)
+                        }
+                        if httpResponse.statusCode == 402,
+                           let errorResponse = try? decoder.decode(APIErrorResponse.self, from: errorData),
+                           let details = errorResponse.error.details {
+                            let resource: String
+                            let limit: Int
+                            let used: Int
+                            if case .string(let r) = details["resource"] { resource = r } else { resource = "unknown" }
+                            if case .int(let l) = details["limit"] { limit = l } else { limit = 0 }
+                            if case .int(let u) = details["used"] { used = u } else { used = 0 }
+                            continuation.finish(throwing: APIError.usageLimitExceeded(
+                                resource: resource, limit: limit, used: used
+                            ))
+                        } else if let errorResponse = try? decoder.decode(APIErrorResponse.self, from: errorData) {
+                            continuation.finish(throwing: APIError.server(
+                                code: errorResponse.error.code,
+                                message: errorResponse.error.message
+                            ))
+                        } else {
+                            continuation.finish(throwing: APIError.httpError(
+                                statusCode: httpResponse.statusCode, data: errorData
+                            ))
+                        }
+                        return
+                    }
+
+                    // Parse SSE format line by line.
+                    var currentEvent: String?
+                    var currentData: String = ""
+
+                    for try await line in bytes.lines {
+                        if line.hasPrefix("event:") {
+                            currentEvent = String(line.dropFirst(6)).trimmingCharacters(in: .whitespaces)
+                        } else if line.hasPrefix("data:") {
+                            let data = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                            currentData = data
+                        } else if line.isEmpty {
+                            // Blank line signals end of event.
+                            if !currentData.isEmpty {
+                                let sseEvent = SSEEvent(event: currentEvent, data: currentData)
+                                continuation.yield(sseEvent)
+                                currentEvent = nil
+                                currentData = ""
+                            }
+                        }
+                    }
+
+                    // Yield any trailing event without a final blank line.
+                    if !currentData.isEmpty {
+                        let sseEvent = SSEEvent(event: currentEvent, data: currentData)
+                        continuation.yield(sseEvent)
+                    }
+
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
     // MARK: - Core Request
 
     private func request<T: Decodable & Sendable>(
@@ -227,6 +342,18 @@ actor APIClient {
 
         // Check for server errors
         guard (200..<300).contains(httpResponse.statusCode) else {
+            // Check for usage limit exceeded (402)
+            if httpResponse.statusCode == 402,
+               let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data),
+               let details = errorResponse.error.details {
+                let resource: String
+                let limit: Int
+                let used: Int
+                if case .string(let r) = details["resource"] { resource = r } else { resource = "unknown" }
+                if case .int(let l) = details["limit"] { limit = l } else { limit = 0 }
+                if case .int(let u) = details["used"] { used = u } else { used = 0 }
+                throw APIError.usageLimitExceeded(resource: resource, limit: limit, used: used)
+            }
             // Try to parse the standard error format
             if let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data) {
                 throw APIError.server(

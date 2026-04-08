@@ -17,7 +17,7 @@ struct MainTabView: View {
                         HomeView(coordinator: coordinator)
                     }
                 case .library:
-                    PlaceholderTabView(title: "Library", icon: "books.vertical", subtitle: "Your passages and books will appear here.")
+                    LibraryView()
                 case .talk:
                     PlaceholderTabView(title: "Talk", icon: "bubble.left.and.bubble.right", subtitle: "AI conversation partners coming soon.")
                 case .flashcards:
