@@ -30,7 +30,7 @@ struct LBBottomSheet<Content: View>: View {
                 .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 28)
-        .padding(.bottom, 24)
+        .padding(.bottom, LBTheme.Spacing.md)
         .background(
             UnevenRoundedRectangle(
                 topLeadingRadius: 12,

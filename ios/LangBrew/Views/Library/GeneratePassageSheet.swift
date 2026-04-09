@@ -7,27 +7,32 @@ import SwiftUI
 /// custom input, style pills, length pills).
 struct GeneratePassageSheet: View {
     @Bindable var viewModel: LibraryViewModel
+    var onDismiss: (() -> Void)?
 
     var body: some View {
-        LBBottomSheet {
-            VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
+        LBBottomSheet(onDismiss: onDismiss) {
+            VStack(alignment: .leading, spacing: 0) {
                 // Title
                 Text("Generate Passage")
                     .font(LBTheme.serifFont(size: 24))
                     .foregroundStyle(Color.lbBlack)
+                    .padding(.bottom, 4)
 
                 // Subtitle
                 Text("We\u{2019}ll create a passage matched to your level.")
                     .font(.system(size: 13))
                     .foregroundStyle(Color.lbG500)
+                    .padding(.bottom, 18)
 
                 // Mode toggle
                 ModeToggle(selectedMode: $viewModel.generateMode)
+                    .padding(.bottom, 18)
 
                 // Mode content
                 switch viewModel.generateMode {
                 case .auto:
                     AutoModeContent()
+                        .padding(.bottom, 18)
                 case .custom:
                     CustomModeContent(
                         suggestedTopic: $viewModel.suggestedTopic,
@@ -110,7 +115,6 @@ private struct AutoModeContent: View {
             .multilineTextAlignment(.center)
             .lineSpacing(14 * 0.5)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, LBTheme.Spacing.xl)
     }
 }
 
@@ -126,12 +130,13 @@ private struct CustomModeContent: View {
     let onRefreshTopic: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
+        VStack(alignment: .leading, spacing: 0) {
             // Suggested topic label
             Text("SUGGESTED TOPIC")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color.lbG400)
                 .kerning(0.66)
+                .padding(.bottom, 10)
 
             // Suggestion box
             HStack {
@@ -163,12 +168,14 @@ private struct CustomModeContent: View {
                 RoundedRectangle(cornerRadius: LBTheme.Radius.large)
                     .strokeBorder(Color.lbG100, lineWidth: 1.5)
             }
+            .padding(.bottom, 12)
 
             // "or" divider
             Text("or")
                 .font(.system(size: 12))
                 .foregroundStyle(Color.lbG400)
                 .frame(maxWidth: .infinity)
+                .padding(.bottom, 10)
 
             // Custom input
             TextField("Describe your own topic...", text: $customTopic)
@@ -182,6 +189,7 @@ private struct CustomModeContent: View {
                     RoundedRectangle(cornerRadius: LBTheme.Radius.large)
                         .strokeBorder(Color.lbG100, lineWidth: 1.5)
                 }
+                .padding(.bottom, 18)
 
             // Style pills
             PillSection(title: "STYLE") {
@@ -191,6 +199,7 @@ private struct CustomModeContent: View {
                     label: \.displayName
                 )
             }
+            .padding(.bottom, 18)
 
             // Length pills
             PillSection(title: "LENGTH") {
@@ -200,6 +209,7 @@ private struct CustomModeContent: View {
                     label: \.displayName
                 )
             }
+            .padding(.bottom, 18)
         }
     }
 }
@@ -212,7 +222,7 @@ private struct PillSection<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color.lbG400)

@@ -15,7 +15,7 @@ enum LibrarySubTab: String, CaseIterable, Identifiable, Sendable {
 /// Main Library tab view with sub-tabs for Passages and My Books.
 /// Wraps content in a NavigationStack for drill-down to the Reader.
 struct LibraryView: View {
-    @State private var viewModel = LibraryViewModel()
+    @Bindable var viewModel: LibraryViewModel
     @State private var selectedSubTab: LibrarySubTab = .passages
 
     var body: some View {
@@ -44,12 +44,6 @@ struct LibraryView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.isGenerating)
-            .sheet(isPresented: $viewModel.isGenerateSheetPresented) {
-                GeneratePassageSheet(viewModel: viewModel)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.hidden)
-                    .presentationBackground(Color.lbWhite)
-            }
             .task {
                 if viewModel.passages.isEmpty {
                     await viewModel.loadPassages()
@@ -156,5 +150,5 @@ private struct MyBooksPlaceholderView: View {
 }
 
 #Preview {
-    LibraryView()
+    LibraryView(viewModel: LibraryViewModel())
 }

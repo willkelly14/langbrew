@@ -7,6 +7,7 @@ struct MainTabView: View {
     let coordinator: AppCoordinator
     @State private var selectedTab: LBTab = .home
     @State private var hideTabBar: Bool = false
+    @State private var libraryViewModel = LibraryViewModel()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,7 +19,7 @@ struct MainTabView: View {
                         HomeView(coordinator: coordinator)
                     }
                 case .library:
-                    LibraryView()
+                    LibraryView(viewModel: libraryViewModel)
                 case .talk:
                     PlaceholderTabView(title: "Talk", icon: "bubble.left.and.bubble.right", subtitle: "AI conversation partners coming soon.")
                 case .flashcards:
@@ -32,6 +33,30 @@ struct MainTabView: View {
                 LBTabBar(selectedTab: $selectedTab)
             }
         }
+        .overlay {
+            if libraryViewModel.isGenerateSheetPresented {
+                ZStack(alignment: .bottom) {
+                    // Scrim
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            libraryViewModel.isGenerateSheetPresented = false
+                        }
+                        .transition(.opacity)
+
+                    // Sheet content — extra bottom padding to account for
+                    // MainTabView's .edgesIgnoringSafeArea(.bottom) removing
+                    // the safe area that LBBottomSheet normally relies on.
+                    GeneratePassageSheet(
+                        viewModel: libraryViewModel,
+                        onDismiss: { libraryViewModel.isGenerateSheetPresented = false }
+                    )
+                    .padding(.bottom, 32)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: libraryViewModel.isGenerateSheetPresented)
         .environment(\.hideTabBar, $hideTabBar)
         .ignoresSafeArea(.keyboard)
         .edgesIgnoringSafeArea(.bottom)
