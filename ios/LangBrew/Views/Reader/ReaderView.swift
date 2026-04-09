@@ -5,12 +5,10 @@ import SwiftUI
 /// The main passage reading screen. Displays passage text with highlighted
 /// vocabulary words, scroll-tracked progress, and access to text options
 /// and word definition sheets.
-///
-/// Mockup: no metadata header in reader, progress bar at bottom,
-/// bottom bar with page label + chapter + TOC icon.
 struct ReaderView: View {
     @State private var viewModel: ReaderViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.hideTabBar) private var hideTabBar
 
     init(passage: PassageResponse, vocabulary: [PassageVocabulary]) {
         _viewModel = State(
@@ -18,48 +16,34 @@ struct ReaderView: View {
         )
     }
 
+    /// Whether any sheet overlay is currently visible.
+    private var isShowingSheet: Bool {
+        viewModel.showTextOptions || viewModel.showWordDefinition
+            || viewModel.showWordDetail || viewModel.showPhrasePopup
+    }
+
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Background
-            Color.lbLinen
-                .ignoresSafeArea()
+        VStack(spacing: 0) {
+            // Navigation bar
+            readerNavBar
 
-            VStack(spacing: 0) {
-                // Navigation bar
-                readerNavBar
-
-                // Passage content
-                passageScrollView
-            }
-
-            // Bottom bar (overlaid)
+            // Passage content
+            passageScrollView
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.lbLinen.ignoresSafeArea())
+        .overlay(alignment: .bottom) {
             readerBottomBar
         }
+        .overlay {
+            if isShowingSheet {
+                sheetOverlay
+            }
+        }
         .navigationBarHidden(true)
-        .sheet(isPresented: $viewModel.showTextOptions) {
-            TextOptionsSheet(viewModel: viewModel)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.hidden)
-                .presentationBackground(Color.lbWhite)
-        }
-        .sheet(isPresented: $viewModel.showWordDefinition) {
-            WordDefinitionSheet(viewModel: viewModel)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.hidden)
-                .presentationBackground(Color.lbWhite)
-        }
-        .sheet(isPresented: $viewModel.showWordDetail) {
-            SentenceTranslationSheet(viewModel: viewModel)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.hidden)
-                .presentationBackground(Color.lbWhite)
-        }
-        .sheet(isPresented: $viewModel.showPhrasePopup) {
-            PhraseTranslationSheet(viewModel: viewModel)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.hidden)
-                .presentationBackground(Color.lbWhite)
-        }
+        .animation(.easeInOut(duration: 0.25), value: isShowingSheet)
+        .onAppear { hideTabBar.wrappedValue = true }
+        .onDisappear { hideTabBar.wrappedValue = false }
     }
 
     // MARK: - Navigation Bar
@@ -107,7 +91,8 @@ struct ReaderView: View {
                     .frame(width: 44, height: 44)
             }
         }
-        .padding(.horizontal, LBTheme.Spacing.sm)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 20)
     }
 
     // MARK: - Passage Scroll View
@@ -115,7 +100,6 @@ struct ReaderView: View {
     private var passageScrollView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Passage body with highlighted words (no metadata header)
                 HighlightedTextView(
                     content: viewModel.passage.content,
                     vocabulary: viewModel.highlightedVocabulary,
@@ -123,18 +107,22 @@ struct ReaderView: View {
                     fontSize: viewModel.fontSize,
                     lineSpacingValue: viewModel.lineSpacingValue,
                     readingFont: viewModel.readingFont,
+                    selectedWord: viewModel.selectedWord,
+                    selectedSentenceRange: viewModel.selectedSentenceRange,
                     onWordTap: { vocab in
                         viewModel.tapWord(vocab)
                     },
-                    onWordLongPress: { word in
-                        viewModel.longPressWord(word)
+                    onNonHighlightedWordTap: { word in
+                        viewModel.tapNonHighlightedWord(word)
+                    },
+                    onWordLongPress: { word, position in
+                        viewModel.longPressWord(word, at: position)
                     },
                     onPhraseSelect: { start, end in
                         viewModel.selectPhrase(startIndex: start, endIndex: end)
                     }
                 )
 
-                // End of passage marker
                 endOfPassage
             }
             .padding(.horizontal, 36)
@@ -176,11 +164,8 @@ struct ReaderView: View {
 
     // MARK: - Bottom Bar
 
-    /// Progress line at top, then page label / chapter / TOC icon.
-    /// Gradient bg from transparent to linen.
     private var readerBottomBar: some View {
         VStack(spacing: 0) {
-            // Progress line (2px height, g100 track, black fill)
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Rectangle()
@@ -198,23 +183,19 @@ struct ReaderView: View {
             }
             .frame(height: 2)
 
-            // Bar content
             HStack {
-                // Page label
                 Text("1 / 1")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.lbG400)
 
                 Spacer()
 
-                // Chapter name (center)
                 Text(viewModel.passage.topic)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.lbG400)
 
                 Spacer()
 
-                // TOC icon
                 Button {} label: {
                     Image(systemName: "list.bullet")
                         .font(.system(size: 16, weight: .medium))
@@ -232,6 +213,35 @@ struct ReaderView: View {
                 endPoint: .center
             )
         )
+    }
+
+    // MARK: - Sheet Overlay
+
+    @ViewBuilder
+    private var sheetOverlay: some View {
+        ZStack(alignment: .bottom) {
+            // Scrim
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    viewModel.dismissActiveSheet()
+                }
+                .transition(.opacity)
+
+            // Sheet content
+            Group {
+                if viewModel.showWordDefinition {
+                    WordDefinitionSheet(viewModel: viewModel, onDismiss: { viewModel.dismissActiveSheet() })
+                } else if viewModel.showWordDetail {
+                    SentenceTranslationSheet(viewModel: viewModel)
+                } else if viewModel.showPhrasePopup {
+                    PhraseTranslationSheet(viewModel: viewModel, onDismiss: { viewModel.dismissActiveSheet() })
+                } else if viewModel.showTextOptions {
+                    TextOptionsSheet(viewModel: viewModel, onDismiss: { viewModel.dismissActiveSheet() })
+                }
+            }
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     // MARK: - Scroll Progress
@@ -255,97 +265,89 @@ private struct ScrollOffsetPreferenceKey: PreferenceKey {
 
 // MARK: - Sentence Translation Sheet (4c)
 
-/// Shown on long-press of a word. Displays the sentence containing the word
-/// with translation, language badge, and action buttons.
 struct SentenceTranslationSheet: View {
     @Bindable var viewModel: ReaderViewModel
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        LBBottomSheet {
-            if viewModel.isLoadingDefinition {
-                VStack(spacing: LBTheme.Spacing.md) {
-                    ProgressView()
-                        .tint(Color.lbBlack)
-                    Text("Translating...")
-                        .font(LBTheme.Typography.body)
-                        .foregroundStyle(Color.lbG500)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, LBTheme.Spacing.xxl)
-            } else if let vocab = viewModel.selectedVocab {
-                VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
-                    // Original text (the word or sentence)
-                    Text(vocab.exampleSentence ?? vocab.word)
+        LBBottomSheet(onDismiss: { viewModel.dismissActiveSheet() }) {
+            VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
+                // Original sentence from the passage
+                if let sentence = viewModel.selectedSentence {
+                    Text(sentence)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(Color.lbBlack)
                         .lineSpacing(20 * 0.4)
+                }
 
-                    // Language row
-                    HStack(spacing: LBTheme.Spacing.md) {
-                        Text("Spanish \u{2192} English")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.lbG500)
-                            .kerning(0.8)
-                            .textCase(.uppercase)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color.lbG100)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                        // Speaker button
-                        Button {} label: {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Color.lbG500)
-                                .frame(width: 28, height: 28)
-                                .background(Color.lbG100)
-                                .clipShape(Circle())
-                        }
-                        .disabled(true)
-
-                        Spacer()
-                    }
-
-                    // Divider
-                    Divider()
+                // Language row
+                HStack(spacing: LBTheme.Spacing.md) {
+                    Text("Spanish \u{2192} English")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.lbG500)
+                        .kerning(0.8)
+                        .textCase(.uppercase)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
                         .background(Color.lbG100)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                    // Translation result
-                    Text(vocab.definition ?? vocab.translation ?? "Translation unavailable")
+                    Button {} label: {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.lbG500)
+                            .frame(width: 28, height: 28)
+                            .background(Color.lbG100)
+                            .clipShape(Circle())
+                    }
+                    .disabled(true)
+
+                    Spacer()
+                }
+
+                Divider()
+                    .background(Color.lbG100)
+
+                // Translation
+                if viewModel.isLoadingSentenceTranslation {
+                    ProgressView()
+                        .tint(Color.lbBlack)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, LBTheme.Spacing.md)
+                } else if let translation = viewModel.sentenceTranslation {
+                    Text(translation)
                         .font(.system(size: 15))
                         .foregroundStyle(Color.lbNearBlack)
                         .lineSpacing(15 * 0.6)
+                }
 
-                    // Two buttons: Copy + Save Sentence
-                    HStack(spacing: LBTheme.Spacing.md) {
-                        Button {
-                            UIPasteboard.general.string = vocab.definition ?? vocab.translation ?? ""
-                        } label: {
-                            Text("Copy")
-                                .font(.system(size: 15))
-                                .foregroundStyle(Color.lbG500)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 15)
-                                .background(Color.lbG100)
-                                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            viewModel.addWordToBank()
-                            dismiss()
-                        } label: {
-                            Text("Save Sentence")
-                                .font(.system(size: 15))
-                                .foregroundStyle(Color.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 15)
-                                .background(Color.lbBlack)
-                                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-                        }
-                        .buttonStyle(.plain)
+                // Buttons
+                HStack(spacing: LBTheme.Spacing.md) {
+                    Button {
+                        UIPasteboard.general.string = viewModel.sentenceTranslation ?? ""
+                    } label: {
+                        Text("Copy")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.lbG500)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(Color.lbG100)
+                            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
                     }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        viewModel.addWordToBank()
+                        viewModel.dismissActiveSheet()
+                    } label: {
+                        Text("Save Sentence")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(Color.lbBlack)
+                            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -354,23 +356,19 @@ struct SentenceTranslationSheet: View {
 
 // MARK: - Phrase Translation Sheet (4c2)
 
-/// Shown when the user selects a phrase. Displays original phrase,
-/// language badge, translation, and Copy + Save Phrase buttons.
 struct PhraseTranslationSheet: View {
     @Bindable var viewModel: ReaderViewModel
-    @Environment(\.dismiss) private var dismiss
+    var onDismiss: (() -> Void)?
 
     var body: some View {
-        LBBottomSheet {
+        LBBottomSheet(onDismiss: onDismiss) {
             VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
                 if let phrase = viewModel.selectedPhrase {
-                    // Original phrase
                     Text(phrase)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(Color.lbBlack)
                         .lineSpacing(20 * 0.4)
 
-                    // Language row
                     HStack(spacing: LBTheme.Spacing.md) {
                         Text("Spanish \u{2192} English")
                             .font(.system(size: 10, weight: .bold))
@@ -395,11 +393,9 @@ struct PhraseTranslationSheet: View {
                         Spacer()
                     }
 
-                    // Divider
                     Divider()
                         .background(Color.lbG100)
 
-                    // Translation
                     if let translation = viewModel.phraseTranslation {
                         Text(translation.translation)
                             .font(.system(size: 15))
@@ -411,7 +407,6 @@ struct PhraseTranslationSheet: View {
                             .frame(maxWidth: .infinity)
                     }
 
-                    // Two buttons: Copy + Save Phrase
                     HStack(spacing: LBTheme.Spacing.md) {
                         Button {
                             UIPasteboard.general.string = viewModel.phraseTranslation?.translation ?? ""

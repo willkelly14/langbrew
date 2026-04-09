@@ -2,7 +2,6 @@ import SwiftUI
 
 // MARK: - Word Segment
 
-/// Represents a segment of passage text that may or may not be a vocabulary word.
 private struct WordSegment: Identifiable {
     let id: Int
     let text: String
@@ -12,14 +11,24 @@ private struct WordSegment: Identifiable {
     let endIndex: Int
 }
 
+// MARK: - Word Frame Preference Key
+
+private struct WordFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [Int: CGRect] = [:]
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
 // MARK: - Highlighted Text View
 
 /// Renders passage text with tappable highlighted vocabulary words.
 ///
 /// Vocabulary words get a cream highlight background (#ede8d2) and a solid
 /// bottom border (#c9be8a, 1.5px). Tapping a highlighted word triggers the
-/// word definition sheet. Long-pressing any word triggers the sentence
-/// translation sheet.
+/// word definition sheet. Tapping a non-highlighted word looks up its definition.
+/// Long-pressing any word triggers the sentence translation sheet.
+/// Dragging across words triggers phrase selection.
 struct HighlightedTextView: View {
     let content: String
     let vocabulary: [PassageVocabulary]
@@ -28,69 +37,130 @@ struct HighlightedTextView: View {
     let lineSpacingValue: CGFloat
     let readingFont: ReadingFont
 
+    let selectedWord: String?
+    let selectedSentenceRange: (start: Int, end: Int)?
+
     let onWordTap: (PassageVocabulary) -> Void
-    let onWordLongPress: (String) -> Void
+    let onNonHighlightedWordTap: (String) -> Void
+    let onWordLongPress: (String, Int) -> Void
     let onPhraseSelect: (Int, Int) -> Void
 
-    /// Tracks the first word index tapped for phrase selection.
-    @State private var phraseStartWordIndex: Int?
-    /// Whether we are in phrase-select mode (after first tap on non-highlighted word).
-    @State private var isPhraseSelectMode: Bool = false
+    @State private var wordFrames: [Int: CGRect] = [:]
+    @State private var dragStartSegmentId: Int?
+    @State private var dragEndSegmentId: Int?
+    @State private var isDragging: Bool = false
 
     var body: some View {
         let segments = buildSegments()
 
-        WrappingHStack(segments: segments) { segment in
-            if segment.isHighlighted, let vocab = segment.vocab {
-                highlightedWordView(segment: segment, vocab: vocab)
-            } else {
-                plainWordView(segment: segment)
-            }
+        WrappingHStack(segments: segments, lineSpacing: lineSpacingValue) { segment in
+            wordView(for: segment)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: WordFramePreferenceKey.self,
+                            value: [segment.id: geo.frame(in: .named("highlightedText"))]
+                        )
+                    }
+                )
+        }
+        .coordinateSpace(name: "highlightedText")
+        .onPreferenceChange(WordFramePreferenceKey.self) { frames in
+            wordFrames = frames
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 25, coordinateSpace: .named("highlightedText"))
+                .onChanged { value in
+                    if !isDragging {
+                        // Only activate for horizontal-ish drags to avoid interfering with scroll
+                        let dx = abs(value.translation.width)
+                        let dy = abs(value.translation.height)
+                        guard dx > dy * 0.7 else { return }
+                        isDragging = true
+                        dragStartSegmentId = findSegmentId(at: value.startLocation)
+                    }
+                    dragEndSegmentId = findSegmentId(at: value.location)
+                }
+                .onEnded { _ in
+                    if isDragging,
+                       let startId = dragStartSegmentId,
+                       let endId = dragEndSegmentId,
+                       startId != endId {
+                        let allSegs = buildSegments()
+                        let startSeg = allSegs.first { $0.id == min(startId, endId) }
+                        let endSeg = allSegs.first { $0.id == max(startId, endId) }
+                        if let s = startSeg, let e = endSeg {
+                            onPhraseSelect(s.startIndex, e.endIndex)
+                        }
+                    }
+                    isDragging = false
+                    dragStartSegmentId = nil
+                    dragEndSegmentId = nil
+                }
+        )
+    }
+
+    // MARK: - Word Views
+
+    @ViewBuilder
+    private func wordView(for segment: WordSegment) -> some View {
+        if segment.isHighlighted, let vocab = segment.vocab {
+            highlightedWordView(segment: segment, vocab: vocab)
+        } else {
+            plainWordView(segment: segment)
         }
     }
 
     // MARK: - Highlighted Word
 
     private func highlightedWordView(segment: WordSegment, vocab: PassageVocabulary) -> some View {
-        Text(segment.text)
+        let isActive = isSegmentActive(segment)
+        let inDrag = isDragging && isSegmentInDragRange(segment)
+        let inverted = isActive || inDrag
+
+        return Text(segment.text)
             .font(bodyFont)
-            .foregroundStyle(Color.lbNearBlack)
+            .foregroundStyle(inverted ? Color.white : Color.lbNearBlack)
             .padding(.horizontal, 3)
             .padding(.vertical, 1)
-            .background(Color.lbHighlight)
+            .background(inverted ? Color.lbBlack : Color.lbHighlight)
             .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.lbHighlightBorder)
-                    .frame(height: 1.5)
+                if !inverted {
+                    Rectangle()
+                        .fill(Color.lbHighlightBorder)
+                        .frame(height: 1.5)
+                }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 2))
+            .clipShape(RoundedRectangle(cornerRadius: inverted ? 3 : 2))
+            .onLongPressGesture(minimumDuration: 0.5) {
+                onWordLongPress(vocab.word, segment.startIndex)
+            }
             .onTapGesture {
                 onWordTap(vocab)
-            }
-            .onLongPressGesture(minimumDuration: 0.5) {
-                onWordLongPress(vocab.word)
             }
     }
 
     // MARK: - Plain Word
 
     private func plainWordView(segment: WordSegment) -> some View {
-        Text(segment.text)
+        let isActive = isSegmentActive(segment)
+        let inDrag = isDragging && isSegmentInDragRange(segment)
+        let inverted = isActive || inDrag
+
+        return Text(segment.text)
             .font(bodyFont)
-            .foregroundStyle(Color.lbNearBlack)
-            .background(
-                isPhraseSelectMode && isInPhraseRange(segment)
-                    ? Color.lbBlack : Color.clear
-            )
-            .foregroundStyle(
-                isPhraseSelectMode && isInPhraseRange(segment)
-                    ? Color.white : Color.lbNearBlack
-            )
+            .foregroundStyle(inverted ? Color.white : Color.lbNearBlack)
+            .background(inverted ? Color.lbBlack : Color.clear)
             .onLongPressGesture(minimumDuration: 0.5) {
-                // Extract the first actual word from the segment text.
                 let cleanWord = extractWord(from: segment.text)
                 if !cleanWord.isEmpty {
-                    onWordLongPress(cleanWord)
+                    onWordLongPress(cleanWord, segment.startIndex)
+                }
+            }
+            .onTapGesture {
+                let cleanWord = extractWord(from: segment.text)
+                if !cleanWord.isEmpty {
+                    onNonHighlightedWordTap(cleanWord)
                 }
             }
     }
@@ -99,6 +169,51 @@ struct HighlightedTextView: View {
 
     private var bodyFont: Font {
         readingFont.bodyFont(size: fontSize)
+    }
+
+    // MARK: - Drag Helpers
+
+    private func findSegmentId(at point: CGPoint) -> Int? {
+        // First check for direct hit
+        for (id, frame) in wordFrames {
+            if frame.contains(point) {
+                return id
+            }
+        }
+        // Fallback: find closest segment within 50pt
+        var closestId: Int?
+        var closestDist: CGFloat = .infinity
+        for (id, frame) in wordFrames {
+            let center = CGPoint(x: frame.midX, y: frame.midY)
+            let dist = hypot(point.x - center.x, point.y - center.y)
+            if dist < closestDist && dist < 50 {
+                closestDist = dist
+                closestId = id
+            }
+        }
+        return closestId
+    }
+
+    /// Checks if a segment should show the active highlight (tapped word or sentence range).
+    private func isSegmentActive(_ segment: WordSegment) -> Bool {
+        // Check if segment starts within the sentence range (long press)
+        if let range = selectedSentenceRange {
+            return segment.startIndex >= range.start && segment.startIndex < range.end
+        }
+        // Check if the segment matches the selected word (tap)
+        if let word = selectedWord {
+            let cleanWord = extractWord(from: segment.text)
+            return !cleanWord.isEmpty && cleanWord.lowercased() == word.lowercased()
+        }
+        return false
+    }
+
+    private func isSegmentInDragRange(_ segment: WordSegment) -> Bool {
+        guard let startId = dragStartSegmentId,
+              let endId = dragEndSegmentId else { return false }
+        let minId = min(startId, endId)
+        let maxId = max(startId, endId)
+        return segment.id >= minId && segment.id <= maxId
     }
 
     // MARK: - Segment Builder
@@ -110,32 +225,26 @@ struct HighlightedTextView: View {
         var currentIndex = 0
         var segmentId = 0
 
-        // Sort vocabulary by start index.
         let sortedVocab = vocabulary.sorted { $0.startIndex < $1.startIndex }
 
         for vocab in sortedVocab {
             let vocabStart = vocab.startIndex
             let vocabEnd = vocab.endIndex
 
-            // Safety: skip if indices are out of bounds.
             guard vocabStart >= currentIndex,
                   vocabEnd <= content.count,
                   vocabStart < vocabEnd else {
                 continue
             }
 
-            // Add plain text before this vocabulary word.
             if currentIndex < vocabStart {
                 let start = content.index(content.startIndex, offsetBy: currentIndex)
                 let end = content.index(content.startIndex, offsetBy: vocabStart)
                 let plainText = String(content[start..<end])
-
-                // Split plain text into words for long-press support.
                 let words = splitIntoWords(plainText, startingAt: currentIndex, segmentId: &segmentId)
                 segments.append(contentsOf: words)
             }
 
-            // Add the highlighted vocabulary word.
             let start = content.index(content.startIndex, offsetBy: vocabStart)
             let end = content.index(content.startIndex, offsetBy: vocabEnd)
             let vocabText = String(content[start..<end])
@@ -152,7 +261,6 @@ struct HighlightedTextView: View {
             currentIndex = vocabEnd
         }
 
-        // Add remaining text after the last vocabulary word.
         if currentIndex < content.count {
             let start = content.index(content.startIndex, offsetBy: currentIndex)
             let plainText = String(content[start...])
@@ -163,16 +271,12 @@ struct HighlightedTextView: View {
         return segments
     }
 
-    /// Splits a plain text string into word-level segments for individual long-press support.
-    /// Preserves whitespace and punctuation attached to words.
     private func splitIntoWords(_ text: String, startingAt offset: Int, segmentId: inout Int) -> [WordSegment] {
         var words: [WordSegment] = []
         var currentPos = 0
 
-        // Split on word boundaries but keep whitespace attached to words.
         let pattern = #"(\S+\s*|\s+)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            // Fallback: return the whole text as one segment.
             let segment = WordSegment(
                 id: segmentId,
                 text: text,
@@ -191,8 +295,6 @@ struct HighlightedTextView: View {
         for match in matches {
             let range = match.range
             let word = nsText.substring(with: range)
-
-            // Check if this word matches any vocabulary from the full set (for long-press lookup).
             let cleanWord = extractWord(from: word)
             let matchingVocab = allVocabulary.first { $0.word.lowercased() == cleanWord.lowercased() }
 
@@ -211,16 +313,9 @@ struct HighlightedTextView: View {
         return words
     }
 
-    /// Extracts a clean word from text by removing punctuation and whitespace.
     private func extractWord(from text: String) -> String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: .punctuationCharacters)
-    }
-
-    /// Checks if a segment falls within the current phrase selection range.
-    private func isInPhraseRange(_ segment: WordSegment) -> Bool {
-        guard let start = phraseStartWordIndex else { return false }
-        return segment.startIndex >= start
     }
 }
 
@@ -231,6 +326,7 @@ struct HighlightedTextView: View {
 /// in a left-to-right, top-to-bottom flow.
 private struct WrappingHStack<Content: View>: View {
     let segments: [WordSegment]
+    let lineSpacing: CGFloat
     @ViewBuilder let content: (WordSegment) -> Content
 
     @State private var totalHeight: CGFloat = 0
@@ -252,7 +348,7 @@ private struct WrappingHStack<Content: View>: View {
                     .alignmentGuide(.leading) { dimension in
                         if abs(width - dimension.width) > geometry.size.width {
                             width = 0
-                            height -= dimension.height
+                            height -= dimension.height + lineSpacing
                         }
                         let result = width
                         if segment.id == segments.last?.id {
@@ -295,8 +391,11 @@ private struct WrappingHStack<Content: View>: View {
             fontSize: 19,
             lineSpacingValue: 19 * 0.85,
             readingFont: .serif,
+            selectedWord: nil,
+            selectedSentenceRange: nil,
             onWordTap: { _ in },
-            onWordLongPress: { _ in },
+            onNonHighlightedWordTap: { _ in },
+            onWordLongPress: { _, _ in },
             onPhraseSelect: { _, _ in }
         )
         .padding(.horizontal, 36)

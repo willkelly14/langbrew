@@ -7,10 +7,10 @@ import SwiftUI
 /// "+ Language Bank" button with "Added to Language Bank" + Undo states.
 struct WordDefinitionSheet: View {
     @Bindable var viewModel: ReaderViewModel
-    @Environment(\.dismiss) private var dismiss
+    var onDismiss: (() -> Void)?
 
     var body: some View {
-        LBBottomSheet {
+        LBBottomSheet(onDismiss: onDismiss) {
             if let vocab = viewModel.selectedVocab {
                 VStack(alignment: .leading, spacing: 0) {
                     // Word

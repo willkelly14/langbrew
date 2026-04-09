@@ -8,10 +8,10 @@ import SwiftUI
 /// No theme section.
 struct TextOptionsSheet: View {
     @Bindable var viewModel: ReaderViewModel
-    @Environment(\.dismiss) private var dismiss
+    var onDismiss: (() -> Void)?
 
     var body: some View {
-        LBBottomSheet {
+        LBBottomSheet(onDismiss: onDismiss) {
             VStack(alignment: .leading, spacing: LBTheme.Spacing.xl) {
                 // Title
                 Text("Text Options")
@@ -29,7 +29,7 @@ struct TextOptionsSheet: View {
 
                 // Save Options button
                 Button {
-                    dismiss()
+                    viewModel.showTextOptions = false
                 } label: {
                     Text("Save Options")
                         .font(.system(size: 15, weight: .medium))

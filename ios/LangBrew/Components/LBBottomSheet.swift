@@ -3,13 +3,23 @@ import SwiftUI
 // MARK: - Bottom Sheet Wrapper
 
 /// A reusable bottom sheet container with a drag indicator handle.
-/// Wraps content in a styled container suitable for `.sheet` presentation.
+/// Supports drag-to-dismiss when `onDismiss` is provided — drag anywhere on the sheet.
+/// Extends into the bottom safe area to avoid gaps.
 struct LBBottomSheet<Content: View>: View {
+    var onDismiss: (() -> Void)?
     @ViewBuilder let content: () -> Content
+
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDismissing: Bool = false
+
+    init(onDismiss: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.onDismiss = onDismiss
+        self.content = content
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Drag indicator
+            // Drag indicator handle
             Capsule()
                 .fill(Color.lbG200)
                 .frame(width: 36, height: 5)
@@ -19,16 +29,58 @@ struct LBBottomSheet<Content: View>: View {
             content()
                 .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, LBTheme.Spacing.lg)
-        .padding(.bottom, LBTheme.Spacing.xxl)
-        .background(Color.lbWhite)
-        .clipShape(
+        .padding(.horizontal, 28)
+        .padding(.bottom, 24)
+        .background(
             UnevenRoundedRectangle(
-                topLeadingRadius: LBTheme.Spacing.xl,
-                topTrailingRadius: LBTheme.Spacing.xl
+                topLeadingRadius: 12,
+                topTrailingRadius: 12
             )
+            .fill(Color.lbWhite)
+            .ignoresSafeArea(edges: .bottom)
         )
         .lbShadow(LBTheme.Shadow.sheet)
+        .ignoresSafeArea(edges: .bottom)
+        .offset(y: dragOffset)
+        .gesture(sheetDragGesture)
+    }
+
+    private var sheetDragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                // Only allow dragging downward
+                let translation = value.translation.height
+                if translation > 0 {
+                    // Apply rubber-band resistance
+                    dragOffset = translation
+                } else {
+                    // Slight resistance going upward
+                    dragOffset = translation * 0.1
+                }
+            }
+            .onEnded { value in
+                let velocity = value.predictedEndTranslation.height
+                let translation = value.translation.height
+
+                if translation > 120 || velocity > 500 {
+                    // Dismiss: slide off screen
+                    isDismissing = true
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        dragOffset = UIScreen.main.bounds.height
+                    }
+                    // Call dismiss after animation completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        onDismiss?()
+                        dragOffset = 0
+                        isDismissing = false
+                    }
+                } else {
+                    // Snap back
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                        dragOffset = 0
+                    }
+                }
+            }
     }
 }
 

@@ -1,5 +1,19 @@
 import SwiftUI
 
+// MARK: - Hide Tab Bar Environment Key
+
+/// Environment key to allow child views (e.g. ReaderView) to hide the tab bar.
+private struct HideTabBarKey: EnvironmentKey {
+    static let defaultValue: Binding<Bool> = .constant(false)
+}
+
+extension EnvironmentValues {
+    var hideTabBar: Binding<Bool> {
+        get { self[HideTabBarKey.self] }
+        set { self[HideTabBarKey.self] = newValue }
+    }
+}
+
 // MARK: - Tab Definition
 
 enum LBTab: String, CaseIterable, Identifiable, Sendable {
@@ -32,11 +46,10 @@ struct LBTabBar: View {
                     tabItem(tab)
                 }
             }
-            .padding(.top, 10)
-            .padding(.bottom, 2)
+            .padding(.top, 15)
+            .padding(.bottom, 35)
         }
         .background(Color.lbLinen)
-        .padding(.bottom, 0)
     }
 
     private func tabItem(_ tab: LBTab) -> some View {

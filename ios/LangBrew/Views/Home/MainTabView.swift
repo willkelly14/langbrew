@@ -6,6 +6,7 @@ import SwiftUI
 struct MainTabView: View {
     let coordinator: AppCoordinator
     @State private var selectedTab: LBTab = .home
+    @State private var hideTabBar: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,10 +27,12 @@ struct MainTabView: View {
             }
             .frame(maxHeight: .infinity)
 
-            // Tab bar pinned to bottom
-            LBTabBar(selectedTab: $selectedTab)
-                .padding(.bottom, 0)
+            // Tab bar pinned to bottom (hidden when reader is active)
+            if !hideTabBar {
+                LBTabBar(selectedTab: $selectedTab)
+            }
         }
+        .environment(\.hideTabBar, $hideTabBar)
         .ignoresSafeArea(.keyboard)
         .edgesIgnoringSafeArea(.bottom)
     }

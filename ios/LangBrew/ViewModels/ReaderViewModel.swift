@@ -130,6 +130,17 @@ final class ReaderViewModel {
     /// vocabulary entry with a lookup from the API.
     var lookedUpVocab: PassageVocabulary?
 
+    // MARK: - Sentence Translation (Long Press)
+
+    /// The sentence extracted from the passage that contains the long-pressed word.
+    var selectedSentence: String?
+    /// Character range (start, end) of the selected sentence in the passage content.
+    var selectedSentenceRange: (start: Int, end: Int)?
+    /// Translation of the selected sentence.
+    var sentenceTranslation: String?
+    /// Whether a sentence translation is being fetched.
+    var isLoadingSentenceTranslation: Bool = false
+
     // MARK: - Phrase Selection
 
     var selectedPhraseStart: Int?
@@ -211,22 +222,17 @@ final class ReaderViewModel {
         wordAdditionState = addedWords.contains(vocab.word) ? .added : .idle
     }
 
-    /// Called when any word is long-pressed.
-    /// Attempts to fetch the definition from the API, falling back to
-    /// a mock lookup if the API call fails.
-    func longPressWord(_ word: String) {
-        // Check if it matches a vocabulary annotation.
+    /// Called when a non-highlighted word is tapped.
+    /// Fetches the definition from the API and shows the word definition sheet.
+    func tapNonHighlightedWord(_ word: String) {
+        // Check if it matches a vocabulary annotation first.
         if let vocab = vocabulary.first(where: { $0.word.lowercased() == word.lowercased() }) {
-            selectedVocab = vocab
-            selectedWord = vocab.word
-            showWordDetail = true
-            wordAdditionState = addedWords.contains(vocab.word) ? .added : .idle
+            tapWord(vocab)
         } else {
-            // Look up via API (or fallback to mock).
             selectedWord = word
             selectedVocab = nil
             isLoadingDefinition = true
-            showWordDetail = true
+            showWordDefinition = true
 
             Task {
                 let vocab = await fetchDefinition(for: word)
@@ -234,6 +240,26 @@ final class ReaderViewModel {
                 selectedVocab = vocab
                 isLoadingDefinition = false
             }
+        }
+    }
+
+    /// Called when any word is long-pressed.
+    /// Extracts the sentence containing the word from the passage content,
+    /// highlights it, and fetches a translation.
+    func longPressWord(_ word: String, at position: Int) {
+        selectedWord = word
+
+        // Extract the sentence from the passage content at this position.
+        guard let (sentence, startIdx, endIdx) = extractSentence(at: position) else { return }
+
+        selectedSentence = sentence
+        selectedSentenceRange = (start: startIdx, end: endIdx)
+        sentenceTranslation = nil
+        isLoadingSentenceTranslation = true
+        showWordDetail = true
+
+        Task {
+            await fetchSentenceTranslation(for: sentence)
         }
     }
 
@@ -346,6 +372,19 @@ final class ReaderViewModel {
         phraseTranslation = nil
     }
 
+    /// Dismisses the currently active sheet with animation-friendly single state change.
+    func dismissActiveSheet() {
+        showWordDefinition = false
+        showWordDetail = false
+        showPhrasePopup = false
+        showTextOptions = false
+        selectedSentence = nil
+        selectedSentenceRange = nil
+        sentenceTranslation = nil
+        isLoadingSentenceTranslation = false
+        selectedWord = nil
+    }
+
     // MARK: - Progress
 
     /// Updates reading progress based on scroll position.
@@ -437,6 +476,58 @@ final class ReaderViewModel {
                     context: nil
                 )
         }
+    }
+
+    /// Extracts the sentence from the passage content at the given character position.
+    /// Returns the sentence text and its character range (start, end offsets).
+    private func extractSentence(at position: Int) -> (String, Int, Int)? {
+        let text = passage.content
+        guard position >= 0, position < text.count else { return nil }
+
+        let posIdx = text.index(text.startIndex, offsetBy: position)
+
+        // Find sentence start: last sentence-ending punctuation before this position, or start of string.
+        let beforePos = text[..<posIdx]
+        let sentenceStartIdx: String.Index
+        if let lastPunct = beforePos.lastIndex(where: { ".!?\n".contains($0) }) {
+            sentenceStartIdx = text.index(after: lastPunct)
+        } else {
+            sentenceStartIdx = text.startIndex
+        }
+
+        // Find sentence end: first sentence-ending punctuation at or after this position, or end of string.
+        let fromPos = text[posIdx...]
+        let sentenceEndIdx: String.Index
+        if let nextPunct = fromPos.firstIndex(where: { ".!?\n".contains($0) }) {
+            sentenceEndIdx = text.index(after: nextPunct)
+        } else {
+            sentenceEndIdx = text.endIndex
+        }
+
+        let sentence = String(text[sentenceStartIdx..<sentenceEndIdx])
+            .trimmingCharacters(in: .whitespaces)
+        let startOffset = text.distance(from: text.startIndex, to: sentenceStartIdx)
+        let endOffset = text.distance(from: text.startIndex, to: sentenceEndIdx)
+
+        return (sentence, startOffset, endOffset)
+    }
+
+    /// Fetches a translation for a sentence from the passage.
+    private func fetchSentenceTranslation(for sentence: String) async {
+        let request = TranslateRequest(
+            text: sentence,
+            sourceLanguage: passage.language,
+            targetLanguage: "English",
+            context: nil
+        )
+
+        do {
+            let response = try await passageService.translatePhrase(request)
+            sentenceTranslation = response.translation
+        } catch {
+            sentenceTranslation = "[Translation unavailable]"
+        }
+        isLoadingSentenceTranslation = false
     }
 
     /// Persists a word addition to the API. Fails silently.
