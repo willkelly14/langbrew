@@ -62,11 +62,14 @@ final class LibraryViewModel {
     /// The selected generation mode (auto or custom).
     var generateMode: GenerateMode = .auto
 
-    /// Selected topics for auto mode.
+    /// Selected topics for auto mode (no longer used -- auto mode is fully automatic).
     var selectedAutoTopics: Set<String> = []
 
     /// Custom topic text for custom mode.
     var customTopic: String = ""
+
+    /// Suggested topic text for custom mode.
+    var suggestedTopic: String = MockPassageData.suggestedTopics.first ?? ""
 
     /// Selected style for custom mode.
     var selectedStyle: PassageStyle = .story
@@ -74,7 +77,7 @@ final class LibraryViewModel {
     /// Selected length for custom mode.
     var selectedLength: PassageLength = .medium
 
-    /// Selected difficulty for custom mode.
+    /// Selected difficulty for custom mode (no longer exposed in UI but kept for API).
     var selectedDifficulty: CEFRLevel = .a2
 
     // MARK: - Loading State
@@ -144,6 +147,25 @@ final class LibraryViewModel {
         return result
     }
 
+    /// The featured/recommended passage (most recent AI-generated).
+    var recommendedPassage: PassageResponse? {
+        passages.first { $0.isGenerated && $0.isNotStarted }
+            ?? passages.first { $0.isGenerated }
+    }
+
+    /// Passages currently being read.
+    var inProgressPassages: [PassageResponse] {
+        passages.filter { $0.isInProgress }
+    }
+
+    /// Passages not yet started (excluding the recommended one).
+    var otherPassages: [PassageResponse] {
+        let recommendedId = recommendedPassage?.id
+        return passages.filter {
+            $0.isNotStarted && $0.id != recommendedId
+        }
+    }
+
     /// Whether there are no passages at all (not just filtered to empty).
     var hasNoPassages: Bool {
         passages.isEmpty
@@ -153,9 +175,10 @@ final class LibraryViewModel {
     var canGenerate: Bool {
         switch generateMode {
         case .auto:
-            return !selectedAutoTopics.isEmpty
+            return true
         case .custom:
             return !customTopic.trimmingCharacters(in: .whitespaces).isEmpty
+                || !suggestedTopic.isEmpty
         }
     }
 
@@ -213,6 +236,17 @@ final class LibraryViewModel {
         await loadPassages()
     }
 
+    /// Refreshes the suggested topic with a random pick.
+    func refreshSuggestedTopic() {
+        let topics = MockPassageData.suggestedTopics
+        var newTopic = topics.randomElement() ?? suggestedTopic
+        // Ensure we get a different one.
+        while newTopic == suggestedTopic && topics.count > 1 {
+            newTopic = topics.randomElement() ?? suggestedTopic
+        }
+        suggestedTopic = newTopic
+    }
+
     /// Initiates passage generation with the current settings.
     /// Streams SSE events to show progress, then adds the completed passage.
     func generatePassage() async {
@@ -228,12 +262,13 @@ final class LibraryViewModel {
 
         switch generateMode {
         case .auto:
-            topic = selectedAutoTopics.first ?? "Daily Life"
+            topic = ""
             level = "A2"
             style = "story"
             length = "medium"
         case .custom:
-            topic = customTopic.trimmingCharacters(in: .whitespaces)
+            let customText = customTopic.trimmingCharacters(in: .whitespaces)
+            topic = customText.isEmpty ? suggestedTopic : customText
             level = selectedDifficulty.rawValue
             style = selectedStyle.rawValue
             length = selectedLength.rawValue
@@ -241,7 +276,7 @@ final class LibraryViewModel {
 
         let request = GeneratePassageRequest(
             mode: generateMode.rawValue,
-            topic: topic,
+            topic: topic.isEmpty ? nil : topic,
             cefrLevel: level,
             style: style,
             length: length
@@ -282,7 +317,7 @@ final class LibraryViewModel {
                 #if DEBUG
                 // Fall back to mock generation during development.
                 let newPassage = MockPassageData.createGeneratedPassage(
-                    topic: topic,
+                    topic: topic.isEmpty ? "Daily Life" : topic,
                     cefrLevel: level,
                     style: style,
                     length: length
@@ -297,7 +332,7 @@ final class LibraryViewModel {
             #if DEBUG
             // Fall back to mock generation during development.
             let newPassage = MockPassageData.createGeneratedPassage(
-                topic: topic,
+                topic: topic.isEmpty ? "Daily Life" : topic,
                 cefrLevel: level,
                 style: style,
                 length: length
@@ -350,6 +385,7 @@ final class LibraryViewModel {
         generateMode = .auto
         selectedAutoTopics = []
         customTopic = ""
+        suggestedTopic = MockPassageData.suggestedTopics.randomElement() ?? ""
         selectedStyle = .story
         selectedLength = .medium
         selectedDifficulty = .a2

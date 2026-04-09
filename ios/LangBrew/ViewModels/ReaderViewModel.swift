@@ -1,78 +1,39 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Reading Theme
-
-/// Visual themes for the reading experience.
-enum ReadingTheme: String, Codable, Sendable, CaseIterable, Identifiable {
-    case light
-    case sepia
-    case dark
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .light: "Light"
-        case .sepia: "Sepia"
-        case .dark: "Dark"
-        }
-    }
-
-    var backgroundColor: Color {
-        switch self {
-        case .light: .lbWhite
-        case .sepia: .lbLinen
-        case .dark: Color(hex: "1a1814")
-        }
-    }
-
-    var textColor: Color {
-        switch self {
-        case .light: .lbBlack
-        case .sepia: .lbBlack
-        case .dark: Color(hex: "e0dbd0")
-        }
-    }
-
-    var secondaryTextColor: Color {
-        switch self {
-        case .light: .lbG500
-        case .sepia: .lbG500
-        case .dark: Color(hex: "9e9385")
-        }
-    }
-
-    var highlightColor: Color {
-        switch self {
-        case .light: .lbHighlight
-        case .sepia: Color(hex: "e5dfca")
-        case .dark: Color(hex: "3d3529")
-        }
-    }
-
-    var navBarColor: Color {
-        switch self {
-        case .light: .lbWhite
-        case .sepia: .lbLinen
-        case .dark: Color(hex: "1a1814")
-        }
-    }
-}
-
 // MARK: - Reading Font
 
 /// Font family preference for reading.
 enum ReadingFont: String, Codable, Sendable, CaseIterable, Identifiable {
+    case sans
     case serif
-    case sansSerif
+    case mono
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
+        case .sans: "Sans"
         case .serif: "Serif"
-        case .sansSerif: "Sans-serif"
+        case .mono: "Mono"
+        }
+    }
+
+    /// The sample text font shown in the Text Options sheet.
+    func sampleFont(size: CGFloat) -> Font {
+        switch self {
+        case .sans: .system(size: size)
+        case .serif: LBTheme.serifFont(size: size)
+        case .mono: .system(size: size, design: .monospaced)
+        }
+    }
+
+    /// The body text font for the reader.
+    func bodyFont(size: CGFloat) -> Font {
+        switch self {
+        case .sans: .system(size: size)
+        case .serif: LBTheme.serifFont(size: size)
+        case .mono: .system(size: size, design: .monospaced)
         }
     }
 }
@@ -82,7 +43,7 @@ enum ReadingFont: String, Codable, Sendable, CaseIterable, Identifiable {
 /// Line spacing presets for reading comfort.
 enum LineSpacingOption: String, Codable, Sendable, CaseIterable, Identifiable {
     case compact
-    case normal
+    case `default`
     case relaxed
 
     var id: String { rawValue }
@@ -90,7 +51,7 @@ enum LineSpacingOption: String, Codable, Sendable, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .compact: "Compact"
-        case .normal: "Normal"
+        case .default: "Default"
         case .relaxed: "Relaxed"
         }
     }
@@ -98,7 +59,7 @@ enum LineSpacingOption: String, Codable, Sendable, CaseIterable, Identifiable {
     var multiplier: CGFloat {
         switch self {
         case .compact: 1.2
-        case .normal: 1.5
+        case .default: 1.5
         case .relaxed: 2.0
         }
     }
@@ -127,7 +88,6 @@ final class ReaderViewModel {
         static let fontSize = "lb_reader_fontSize"
         static let lineSpacing = "lb_reader_lineSpacing"
         static let readingFont = "lb_reader_font"
-        static let readingTheme = "lb_reader_theme"
     }
 
     // MARK: - Passage Data
@@ -151,10 +111,6 @@ final class ReaderViewModel {
 
     var readingFont: ReadingFont {
         didSet { UserDefaults.standard.set(readingFont.rawValue, forKey: Keys.readingFont) }
-    }
-
-    var readingTheme: ReadingTheme {
-        didSet { UserDefaults.standard.set(readingTheme.rawValue, forKey: Keys.readingTheme) }
     }
 
     // MARK: - Sheet State
@@ -211,13 +167,13 @@ final class ReaderViewModel {
         let defaults = UserDefaults.standard
 
         let savedFontSize = defaults.double(forKey: Keys.fontSize)
-        self.fontSize = savedFontSize > 0 ? CGFloat(savedFontSize) : 18
+        self.fontSize = savedFontSize > 0 ? CGFloat(savedFontSize) : 19
 
         if let savedSpacing = defaults.string(forKey: Keys.lineSpacing),
            let spacing = LineSpacingOption(rawValue: savedSpacing) {
             self.lineSpacing = spacing
         } else {
-            self.lineSpacing = .normal
+            self.lineSpacing = .default
         }
 
         if let savedFont = defaults.string(forKey: Keys.readingFont),
@@ -226,25 +182,13 @@ final class ReaderViewModel {
         } else {
             self.readingFont = .serif
         }
-
-        if let savedTheme = defaults.string(forKey: Keys.readingTheme),
-           let theme = ReadingTheme(rawValue: savedTheme) {
-            self.readingTheme = theme
-        } else {
-            self.readingTheme = .sepia
-        }
     }
 
     // MARK: - Computed Properties
 
     /// The font used for passage body text, based on user preference.
     var bodyFont: Font {
-        switch readingFont {
-        case .serif:
-            return LBTheme.serifFont(size: fontSize)
-        case .sansSerif:
-            return .system(size: fontSize)
-        }
+        readingFont.bodyFont(size: fontSize)
     }
 
     /// Computed line spacing in points.

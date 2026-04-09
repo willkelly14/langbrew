@@ -5,6 +5,9 @@ import SwiftUI
 /// The main passage reading screen. Displays passage text with highlighted
 /// vocabulary words, scroll-tracked progress, and access to text options
 /// and word definition sheets.
+///
+/// Mockup: no metadata header in reader, progress bar at bottom,
+/// bottom bar with page label + chapter + TOC icon.
 struct ReaderView: View {
     @State private var viewModel: ReaderViewModel
     @Environment(\.dismiss) private var dismiss
@@ -16,21 +19,21 @@ struct ReaderView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottom) {
             // Background
-            viewModel.readingTheme.backgroundColor
+            Color.lbLinen
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Progress bar at the very top
-                readingProgressBar
-
                 // Navigation bar
                 readerNavBar
 
                 // Passage content
                 passageScrollView
             }
+
+            // Bottom bar (overlaid)
+            readerBottomBar
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $viewModel.showTextOptions) {
@@ -46,38 +49,17 @@ struct ReaderView: View {
                 .presentationBackground(Color.lbWhite)
         }
         .sheet(isPresented: $viewModel.showWordDetail) {
-            WordDetailSheet(viewModel: viewModel)
+            SentenceTranslationSheet(viewModel: viewModel)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.hidden)
                 .presentationBackground(Color.lbWhite)
         }
         .sheet(isPresented: $viewModel.showPhrasePopup) {
-            PhraseTranslationPopup(viewModel: viewModel)
-                .presentationDetents([.height(280)])
+            PhraseTranslationSheet(viewModel: viewModel)
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.hidden)
                 .presentationBackground(Color.lbWhite)
         }
-    }
-
-    // MARK: - Progress Bar
-
-    private var readingProgressBar: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Rectangle()
-                    .fill(viewModel.readingTheme.backgroundColor)
-                    .frame(height: 3)
-
-                Rectangle()
-                    .fill(viewModel.readingTheme.textColor.opacity(0.3))
-                    .frame(
-                        width: geometry.size.width * viewModel.readingProgress,
-                        height: 3
-                    )
-                    .animation(.easeOut(duration: 0.2), value: viewModel.readingProgress)
-            }
-        }
-        .frame(height: 3)
     }
 
     // MARK: - Navigation Bar
@@ -89,8 +71,8 @@ struct ReaderView: View {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(viewModel.readingTheme.textColor)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(Color.lbBlack)
                     .frame(width: 44, height: 44)
             }
 
@@ -98,54 +80,42 @@ struct ReaderView: View {
 
             // Title
             Text(viewModel.passage.title)
-                .font(LBTheme.Typography.bodyMedium)
-                .foregroundStyle(viewModel.readingTheme.textColor)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.lbG500)
                 .lineLimit(1)
 
             Spacer()
 
-            // Listening icon (disabled)
-            listeningButton
+            // Listening icon
+            Button {} label: {
+                Image(systemName: "headphones")
+                    .font(.system(size: 20, weight: .regular))
+                    .imageScale(.medium)
+                    .foregroundStyle(Color.lbBlack)
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(true)
+            .opacity(0.4)
 
-            // Text options
+            // Text options (Aa icon)
             Button {
                 viewModel.showTextOptions = true
             } label: {
-                Image(systemName: "textformat.size")
+                Text("Aa")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(viewModel.readingTheme.textColor)
+                    .foregroundStyle(Color.lbBlack)
                     .frame(width: 44, height: 44)
             }
         }
         .padding(.horizontal, LBTheme.Spacing.sm)
-        .background(viewModel.readingTheme.navBarColor)
-    }
-
-    private var listeningButton: some View {
-        Button {} label: {
-            Image(systemName: "speaker.wave.2")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(viewModel.readingTheme.secondaryTextColor.opacity(0.4))
-                .frame(width: 44, height: 44)
-        }
-        .disabled(true)
-        .overlay(alignment: .bottom) {
-            Text("Soon")
-                .font(.system(size: 8, weight: .medium))
-                .foregroundStyle(viewModel.readingTheme.secondaryTextColor.opacity(0.5))
-                .offset(y: -2)
-        }
     }
 
     // MARK: - Passage Scroll View
 
     private var passageScrollView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: LBTheme.Spacing.xl) {
-                // Passage metadata header
-                passageHeader
-
-                // Passage body with highlighted words
+            VStack(alignment: .leading, spacing: 0) {
+                // Passage body with highlighted words (no metadata header)
                 HighlightedTextView(
                     content: viewModel.passage.content,
                     vocabulary: viewModel.highlightedVocabulary,
@@ -153,7 +123,6 @@ struct ReaderView: View {
                     fontSize: viewModel.fontSize,
                     lineSpacingValue: viewModel.lineSpacingValue,
                     readingFont: viewModel.readingFont,
-                    theme: viewModel.readingTheme,
                     onWordTap: { vocab in
                         viewModel.tapWord(vocab)
                     },
@@ -168,9 +137,9 @@ struct ReaderView: View {
                 // End of passage marker
                 endOfPassage
             }
-            .padding(.horizontal, LBTheme.Spacing.xl)
-            .padding(.top, LBTheme.Spacing.lg)
-            .padding(.bottom, LBTheme.Spacing.xxxl * 2)
+            .padding(.horizontal, 36)
+            .padding(.top, 20)
+            .padding(.bottom, 80)
             .background(
                 GeometryReader { geometry in
                     Color.clear
@@ -187,35 +156,12 @@ struct ReaderView: View {
         }
     }
 
-    // MARK: - Passage Header
-
-    private var passageHeader: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
-            HStack(spacing: LBTheme.Spacing.sm) {
-                LBPill(viewModel.passage.cefrLevel, variant: .filled)
-                LBPill(viewModel.passage.topic, variant: .outlined)
-            }
-
-            Text(viewModel.passage.title)
-                .font(LBTheme.Typography.title)
-                .foregroundStyle(viewModel.readingTheme.textColor)
-
-            HStack(spacing: LBTheme.Spacing.md) {
-                Label(viewModel.passage.wordCountLabel, systemImage: "text.word.spacing")
-                Label(viewModel.passage.readingTimeLabel, systemImage: "clock")
-            }
-            .font(LBTheme.Typography.caption)
-            .foregroundStyle(viewModel.readingTheme.secondaryTextColor)
-        }
-        .padding(.bottom, LBTheme.Spacing.md)
-    }
-
     // MARK: - End of Passage
 
     private var endOfPassage: some View {
         VStack(spacing: LBTheme.Spacing.md) {
             Divider()
-                .background(viewModel.readingTheme.secondaryTextColor.opacity(0.2))
+                .background(Color.lbG200)
 
             HStack(spacing: LBTheme.Spacing.sm) {
                 Image(systemName: "checkmark.circle")
@@ -223,18 +169,75 @@ struct ReaderView: View {
                 Text("End of passage")
                     .font(LBTheme.Typography.caption)
             }
-            .foregroundStyle(viewModel.readingTheme.secondaryTextColor)
+            .foregroundStyle(Color.lbG400)
         }
         .padding(.top, LBTheme.Spacing.xl)
+    }
+
+    // MARK: - Bottom Bar
+
+    /// Progress line at top, then page label / chapter / TOC icon.
+    /// Gradient bg from transparent to linen.
+    private var readerBottomBar: some View {
+        VStack(spacing: 0) {
+            // Progress line (2px height, g100 track, black fill)
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.lbG100)
+                        .frame(height: 2)
+
+                    Rectangle()
+                        .fill(Color.lbBlack)
+                        .frame(
+                            width: geometry.size.width * viewModel.readingProgress,
+                            height: 2
+                        )
+                        .animation(.easeOut(duration: 0.2), value: viewModel.readingProgress)
+                }
+            }
+            .frame(height: 2)
+
+            // Bar content
+            HStack {
+                // Page label
+                Text("1 / 1")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.lbG400)
+
+                Spacer()
+
+                // Chapter name (center)
+                Text(viewModel.passage.topic)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.lbG400)
+
+                Spacer()
+
+                // TOC icon
+                Button {} label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color.lbG400)
+                        .frame(width: 32, height: 32)
+                }
+            }
+            .padding(.horizontal, LBTheme.Spacing.lg)
+            .padding(.vertical, LBTheme.Spacing.sm)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color.lbLinen.opacity(0), Color.lbLinen],
+                startPoint: .top,
+                endPoint: .center
+            )
+        )
     }
 
     // MARK: - Scroll Progress
 
     private func updateScrollProgress(offset: CGFloat) {
-        // Negative offset means scrolled down.
-        // Map the scroll offset to a 0-1 progress value.
         let scrolled = -offset
-        // Approximate total scrollable height based on content.
         let estimatedHeight = CGFloat(viewModel.passage.wordCount) * 2.5
         let progress = max(0, min(1, scrolled / max(estimatedHeight, 1)))
         viewModel.updateProgress(progress)
@@ -250,12 +253,11 @@ private struct ScrollOffsetPreferenceKey: PreferenceKey {
     }
 }
 
-// MARK: - Word Detail Sheet
+// MARK: - Sentence Translation Sheet (4c)
 
-/// An expanded word detail sheet shown on long-press of any word.
-/// Displays all available information including multiple definitions,
-/// conjugation hints, and usage notes.
-struct WordDetailSheet: View {
+/// Shown on long-press of a word. Displays the sentence containing the word
+/// with translation, language badge, and action buttons.
+struct SentenceTranslationSheet: View {
     @Bindable var viewModel: ReaderViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -265,7 +267,7 @@ struct WordDetailSheet: View {
                 VStack(spacing: LBTheme.Spacing.md) {
                     ProgressView()
                         .tint(Color.lbBlack)
-                    Text("Looking up word...")
+                    Text("Translating...")
                         .font(LBTheme.Typography.body)
                         .foregroundStyle(Color.lbG500)
                 }
@@ -273,116 +275,76 @@ struct WordDetailSheet: View {
                 .padding(.vertical, LBTheme.Spacing.xxl)
             } else if let vocab = viewModel.selectedVocab {
                 VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
-                    // Header
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: LBTheme.Spacing.xs) {
-                            Text(vocab.word)
-                                .font(LBTheme.Typography.title)
-                                .foregroundStyle(Color.lbBlack)
+                    // Original text (the word or sentence)
+                    Text(vocab.exampleSentence ?? vocab.word)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(Color.lbBlack)
+                        .lineSpacing(20 * 0.4)
 
-                            if let phonetic = vocab.phonetic {
-                                Text(phonetic)
-                                    .font(LBTheme.Typography.body)
-                                    .italic()
-                                    .foregroundStyle(Color.lbG400)
-                            }
+                    // Language row
+                    HStack(spacing: LBTheme.Spacing.md) {
+                        Text("Spanish \u{2192} English")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.lbG500)
+                            .kerning(0.8)
+                            .textCase(.uppercase)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.lbG100)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                        // Speaker button
+                        Button {} label: {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.lbG500)
+                                .frame(width: 28, height: 28)
+                                .background(Color.lbG100)
+                                .clipShape(Circle())
                         }
+                        .disabled(true)
 
                         Spacer()
-
-                        Button { dismiss() } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundStyle(Color.lbG300)
-                        }
                     }
 
-                    // Word type
-                    if let wordType = vocab.wordType {
-                        LBPill(wordType, variant: .highlight)
-                    }
+                    // Divider
+                    Divider()
+                        .background(Color.lbG100)
 
-                    // Translation
-                    if let translation = vocab.translation {
-                        HStack(spacing: LBTheme.Spacing.sm) {
-                            Image(systemName: "arrow.left.arrow.right")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Color.lbG400)
-                            Text(translation)
-                                .font(LBTheme.Typography.bodyMedium)
-                                .foregroundStyle(Color.lbBlack)
-                        }
-                    }
+                    // Translation result
+                    Text(vocab.definition ?? vocab.translation ?? "Translation unavailable")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.lbNearBlack)
+                        .lineSpacing(15 * 0.6)
 
-                    // Definitions
-                    if let definitions = vocab.definitions, !definitions.isEmpty {
-                        VStack(alignment: .leading, spacing: LBTheme.Spacing.md) {
-                            ForEach(Array(definitions.enumerated()), id: \.offset) { index, def in
-                                VStack(alignment: .leading, spacing: LBTheme.Spacing.xs) {
-                                    Text("\(index + 1). \(def.definition)")
-                                        .font(LBTheme.Typography.body)
-                                        .foregroundStyle(Color.lbBlack)
-
-                                    if let example = def.example {
-                                        Text(example)
-                                            .font(LBTheme.Typography.caption)
-                                            .italic()
-                                            .foregroundStyle(Color.lbG500)
-                                    }
-                                }
-                            }
-                        }
-                    } else if let definition = vocab.definition {
-                        Text(definition)
-                            .font(LBTheme.Typography.body)
-                            .foregroundStyle(Color.lbBlack)
-                    }
-
-                    // Conjugation hint
-                    if let conjugation = vocab.conjugationHint {
-                        VStack(alignment: .leading, spacing: LBTheme.Spacing.xs) {
-                            Text("Conjugation")
-                                .font(LBTheme.Typography.caption)
-                                .foregroundStyle(Color.lbG400)
-                            Text(conjugation)
-                                .font(LBTheme.Typography.caption)
+                    // Two buttons: Copy + Save Sentence
+                    HStack(spacing: LBTheme.Spacing.md) {
+                        Button {
+                            UIPasteboard.general.string = vocab.definition ?? vocab.translation ?? ""
+                        } label: {
+                            Text("Copy")
+                                .font(.system(size: 15))
                                 .foregroundStyle(Color.lbG500)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(Color.lbG100)
+                                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
                         }
-                        .padding(LBTheme.Spacing.md)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.lbG50)
-                        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
-                    }
+                        .buttonStyle(.plain)
 
-                    // Usage notes
-                    if let notes = vocab.usageNotes {
-                        HStack(alignment: .top, spacing: LBTheme.Spacing.sm) {
-                            Image(systemName: "lightbulb")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Color.lbG400)
-                            Text(notes)
-                                .font(LBTheme.Typography.caption)
-                                .foregroundStyle(Color.lbG500)
-                        }
-                    }
-
-                    // Add to Language Bank
-                    if !viewModel.addedWords.contains(vocab.word) {
-                        LBButton("Add to Language Bank", variant: .primary, icon: "plus", fullWidth: true) {
+                        Button {
                             viewModel.addWordToBank()
+                            dismiss()
+                        } label: {
+                            Text("Save Sentence")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(Color.lbBlack)
+                                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
                         }
-                    } else {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.lbBlack)
-                            Text("Added")
-                                .font(LBTheme.Typography.bodyMedium)
-                                .foregroundStyle(Color.lbBlack)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, LBTheme.Spacing.md)
-                        .background(Color.lbHighlight)
-                        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -390,66 +352,92 @@ struct WordDetailSheet: View {
     }
 }
 
-// MARK: - Phrase Translation Popup
+// MARK: - Phrase Translation Sheet (4c2)
 
-/// A compact popup shown when the user selects a phrase (multi-word range).
-/// Displays the original phrase, its translation, and optional context.
-struct PhraseTranslationPopup: View {
+/// Shown when the user selects a phrase. Displays original phrase,
+/// language badge, translation, and Copy + Save Phrase buttons.
+struct PhraseTranslationSheet: View {
     @Bindable var viewModel: ReaderViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         LBBottomSheet {
             VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
-                // Header
-                HStack(alignment: .top) {
-                    Text("Phrase Translation")
-                        .font(LBTheme.Typography.title2)
-                        .foregroundStyle(Color.lbBlack)
-
-                    Spacer()
-
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundStyle(Color.lbG300)
-                    }
-                }
-
                 if let phrase = viewModel.selectedPhrase {
                     // Original phrase
                     Text(phrase)
-                        .font(LBTheme.Typography.bodyMedium)
-                        .italic()
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(Color.lbBlack)
-                        .padding(LBTheme.Spacing.md)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.lbHighlight)
-                        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
+                        .lineSpacing(20 * 0.4)
+
+                    // Language row
+                    HStack(spacing: LBTheme.Spacing.md) {
+                        Text("Spanish \u{2192} English")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.lbG500)
+                            .kerning(0.8)
+                            .textCase(.uppercase)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.lbG100)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                        Button {} label: {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.lbG500)
+                                .frame(width: 28, height: 28)
+                                .background(Color.lbG100)
+                                .clipShape(Circle())
+                        }
+                        .disabled(true)
+
+                        Spacer()
+                    }
+
+                    // Divider
+                    Divider()
+                        .background(Color.lbG100)
 
                     // Translation
                     if let translation = viewModel.phraseTranslation {
-                        VStack(alignment: .leading, spacing: LBTheme.Spacing.xs) {
-                            HStack(spacing: LBTheme.Spacing.sm) {
-                                Image(systemName: "arrow.left.arrow.right")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(Color.lbG400)
-                                Text(translation.translation)
-                                    .font(LBTheme.Typography.body)
-                                    .foregroundStyle(Color.lbBlack)
-                            }
-
-                            if let context = translation.context {
-                                Text(context)
-                                    .font(LBTheme.Typography.caption)
-                                    .foregroundStyle(Color.lbG500)
-                            }
-                        }
+                        Text(translation.translation)
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.lbNearBlack)
+                            .lineSpacing(15 * 0.6)
+                    } else {
+                        ProgressView()
+                            .tint(Color.lbBlack)
+                            .frame(maxWidth: .infinity)
                     }
 
-                    // Save phrase button
-                    LBButton("Save Phrase", variant: .primary, icon: "bookmark", fullWidth: true) {
-                        viewModel.savePhrase()
+                    // Two buttons: Copy + Save Phrase
+                    HStack(spacing: LBTheme.Spacing.md) {
+                        Button {
+                            UIPasteboard.general.string = viewModel.phraseTranslation?.translation ?? ""
+                        } label: {
+                            Text("Copy")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.lbG500)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(Color.lbG100)
+                                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            viewModel.savePhrase()
+                        } label: {
+                            Text("Save Phrase")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(Color.lbBlack)
+                                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }

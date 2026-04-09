@@ -3,87 +3,99 @@ import SwiftUI
 // MARK: - Passage Card View
 
 /// A card displaying a passage summary in the Library grid.
-/// Shows CEFR level badge, AI badge, title, metadata, excerpt, and progress.
+/// Shows CEFR tag + status dot, title, "X new words" meta,
+/// progress bar + percentage (or "Not started" / time label).
 struct PassageCardView: View {
     let passage: PassageResponse
 
     var body: some View {
         VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
-            // Badges
+            // Top row: CEFR tag + status dot
             HStack(spacing: LBTheme.Spacing.xs) {
-                // CEFR level badge
+                // CEFR tag
                 Text(passage.cefrLevel)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color.lbNearBlack)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color.lbG500)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Color.lbG100)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-
-                // AI badge
-                if passage.isGenerated {
-                    Text("AI")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Color.lbNearBlack)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(Color.lbHighlight)
-                        .clipShape(RoundedRectangle(cornerRadius: 5))
-                }
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 Spacer()
+
+                // Status dot
+                if passage.isInProgress {
+                    Circle()
+                        .fill(Color.lbNearBlack)
+                        .frame(width: 6, height: 6)
+                }
             }
 
             // Title
             Text(passage.title)
-                .font(LBTheme.Typography.headline)
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.lbBlack)
+                .lineSpacing(14 * 0.35)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
 
-            // Metadata: word count + time
-            Text("\(passage.wordCountLabel) \u{00B7} \(passage.readingTimeLabel)")
-                .font(LBTheme.Typography.caption)
+            // Meta
+            Text(passage.newWordCountLabel)
+                .font(.system(size: 11))
                 .foregroundStyle(Color.lbG400)
-
-            // Excerpt
-            Text(passage.excerpt)
-                .font(LBTheme.Typography.caption)
-                .foregroundStyle(Color.lbG500)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
 
             Spacer(minLength: 0)
 
-            // Progress bar
-            if passage.readingProgress > 0 {
-                LBProgressBar(
-                    progress: passage.readingProgress,
-                    height: 4,
-                    label: progressLabel
-                )
+            // Bottom: progress bar + percentage, or time / status
+            if passage.isInProgress {
+                HStack(spacing: LBTheme.Spacing.sm) {
+                    // Progress bar (3px height, g200 track, near-black fill)
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.lbG200)
+                                .frame(height: 3)
+
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.lbNearBlack)
+                                .frame(
+                                    width: geometry.size.width * passage.readingProgress,
+                                    height: 3
+                                )
+                        }
+                    }
+                    .frame(height: 3)
+
+                    // Percentage
+                    Text("\(Int(passage.readingProgress * 100))%")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Color.lbG500)
+                }
+            } else if passage.readingProgress >= 1.0 {
+                HStack(spacing: LBTheme.Spacing.sm) {
+                    GeometryReader { geometry in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.lbNearBlack)
+                            .frame(width: geometry.size.width, height: 3)
+                    }
+                    .frame(height: 3)
+
+                    Text("Done")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Color.lbG500)
+                }
             } else {
-                LBProgressBar(
-                    progress: 0,
-                    trackColor: .lbG100,
-                    height: 4
-                )
+                // Not started
+                Text(passage.readingTimeLabel)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.lbG400)
             }
         }
-        .padding(LBTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 136, alignment: .leading)
         .background(Color.lbWhite)
         .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
         .lbShadow(LBTheme.Shadow.card)
-    }
-
-    private var progressLabel: String? {
-        if passage.readingProgress >= 1.0 {
-            return "Done"
-        } else if passage.readingProgress > 0 {
-            return "\(Int(passage.readingProgress * 100))%"
-        }
-        return nil
     }
 }
 

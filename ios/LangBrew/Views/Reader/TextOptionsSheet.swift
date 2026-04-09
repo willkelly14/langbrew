@@ -3,7 +3,9 @@ import SwiftUI
 // MARK: - Text Options Sheet
 
 /// A bottom sheet for customizing reading display settings.
-/// Changes apply live to the reader behind the sheet.
+/// Mockup (4e): Font Size with slider, Line Spacing pills (Compact/Default/Relaxed),
+/// Font family options (Sans/Serif/Mono), and a "Save Options" button.
+/// No theme section.
 struct TextOptionsSheet: View {
     @Bindable var viewModel: ReaderViewModel
     @Environment(\.dismiss) private var dismiss
@@ -11,40 +13,34 @@ struct TextOptionsSheet: View {
     var body: some View {
         LBBottomSheet {
             VStack(alignment: .leading, spacing: LBTheme.Spacing.xl) {
-                // Header
-                sheetHeader
+                // Title
+                Text("Text Options")
+                    .font(LBTheme.serifFont(size: 22))
+                    .foregroundStyle(Color.lbBlack)
 
-                // Font size slider
+                // Font size section
                 fontSizeSection
 
-                // Line spacing options
+                // Line spacing section
                 lineSpacingSection
 
-                // Font family toggle
+                // Font family section
                 fontFamilySection
 
-                // Theme selector
-                themeSection
-            }
-        }
-    }
-
-    // MARK: - Header
-
-    private var sheetHeader: some View {
-        HStack {
-            Text("Text Options")
-                .font(LBTheme.Typography.title2)
-                .foregroundStyle(Color.lbBlack)
-
-            Spacer()
-
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(Color.lbG300)
+                // Save Options button
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Save Options")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(Color.lbBlack)
+                        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, LBTheme.Spacing.sm)
             }
         }
     }
@@ -53,35 +49,34 @@ struct TextOptionsSheet: View {
 
     private var fontSizeSection: some View {
         VStack(alignment: .leading, spacing: LBTheme.Spacing.md) {
-            Text("Font Size")
-                .font(LBTheme.Typography.bodyMedium)
+            // Label
+            Text("FONT SIZE")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Color.lbG500)
+                .kerning(0.8)
+
+            // Current size display
+            Text("\(Int(viewModel.fontSize))px")
+                .font(LBTheme.serifFont(size: 22))
                 .foregroundStyle(Color.lbBlack)
 
+            // Slider row: small A -- slider -- large A
             HStack(spacing: LBTheme.Spacing.md) {
                 Text("A")
-                    .font(.system(size: 14))
+                    .font(LBTheme.serifFont(size: 14))
                     .foregroundStyle(Color.lbG400)
 
                 Slider(
                     value: $viewModel.fontSize,
-                    in: 14...24,
+                    in: 14...26,
                     step: 1
                 )
                 .tint(Color.lbBlack)
 
                 Text("A")
-                    .font(.system(size: 24))
+                    .font(LBTheme.serifFont(size: 22))
                     .foregroundStyle(Color.lbG400)
             }
-
-            // Live preview
-            Text("El sol entraba por las ventanas.")
-                .font(viewModel.bodyFont)
-                .foregroundStyle(Color.lbBlack)
-                .padding(LBTheme.Spacing.md)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.lbG50)
-                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
         }
     }
 
@@ -89,53 +84,42 @@ struct TextOptionsSheet: View {
 
     private var lineSpacingSection: some View {
         VStack(alignment: .leading, spacing: LBTheme.Spacing.md) {
-            Text("Line Spacing")
-                .font(LBTheme.Typography.bodyMedium)
-                .foregroundStyle(Color.lbBlack)
+            Text("LINE SPACING")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Color.lbG500)
+                .kerning(0.8)
 
             HStack(spacing: LBTheme.Spacing.sm) {
                 ForEach(LineSpacingOption.allCases) { option in
-                    lineSpacingButton(option)
+                    lineSpacingPill(option)
                 }
             }
         }
     }
 
-    private func lineSpacingButton(_ option: LineSpacingOption) -> some View {
+    private func lineSpacingPill(_ option: LineSpacingOption) -> some View {
         Button {
             viewModel.lineSpacing = option
         } label: {
-            VStack(spacing: LBTheme.Spacing.xs) {
-                // Visual representation of line spacing
-                VStack(spacing: option.multiplier * 3) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(
-                                viewModel.lineSpacing == option
-                                    ? Color.lbBlack
-                                    : Color.lbG300
-                            )
-                            .frame(height: 2)
-                    }
+            Text(option.displayName)
+                .font(.system(
+                    size: 13,
+                    weight: viewModel.lineSpacing == option ? .semibold : .medium
+                ))
+                .foregroundStyle(
+                    viewModel.lineSpacing == option ? Color.lbNearBlack : Color.lbG500
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.lbWhite)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(
+                            viewModel.lineSpacing == option ? Color.lbBlack : Color.lbG200,
+                            lineWidth: 1.5
+                        )
                 }
-                .frame(width: 32, height: 28)
-
-                Text(option.displayName)
-                    .font(LBTheme.Typography.caption)
-            }
-            .foregroundStyle(
-                viewModel.lineSpacing == option
-                    ? Color.lbBlack
-                    : Color.lbG400
-            )
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, LBTheme.Spacing.md)
-            .background(
-                viewModel.lineSpacing == option
-                    ? Color.lbHighlight
-                    : Color.lbG50
-            )
-            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
         }
         .buttonStyle(.plain)
     }
@@ -144,98 +128,51 @@ struct TextOptionsSheet: View {
 
     private var fontFamilySection: some View {
         VStack(alignment: .leading, spacing: LBTheme.Spacing.md) {
-            Text("Font")
-                .font(LBTheme.Typography.bodyMedium)
-                .foregroundStyle(Color.lbBlack)
+            Text("FONT")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Color.lbG500)
+                .kerning(0.8)
 
             HStack(spacing: LBTheme.Spacing.sm) {
                 ForEach(ReadingFont.allCases) { font in
-                    fontButton(font)
+                    fontOptionBox(font)
                 }
             }
         }
     }
 
-    private func fontButton(_ font: ReadingFont) -> some View {
-        Button {
+    private func fontOptionBox(_ font: ReadingFont) -> some View {
+        let isSelected = viewModel.readingFont == font
+
+        return Button {
             viewModel.readingFont = font
         } label: {
-            VStack(spacing: LBTheme.Spacing.xs) {
-                Text("Aa")
-                    .font(
-                        font == .serif
-                            ? LBTheme.serifFont(size: 20)
-                            : .system(size: 20)
-                    )
-
-                Text(font.displayName)
-                    .font(LBTheme.Typography.caption)
-            }
-            .foregroundStyle(
-                viewModel.readingFont == font
-                    ? Color.lbBlack
-                    : Color.lbG400
-            )
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, LBTheme.Spacing.md)
-            .background(
-                viewModel.readingFont == font
-                    ? Color.lbHighlight
-                    : Color.lbG50
-            )
-            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Theme
-
-    private var themeSection: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.md) {
-            Text("Theme")
-                .font(LBTheme.Typography.bodyMedium)
-                .foregroundStyle(Color.lbBlack)
-
-            HStack(spacing: LBTheme.Spacing.sm) {
-                ForEach(ReadingTheme.allCases) { theme in
-                    themeButton(theme)
-                }
-            }
-        }
-    }
-
-    private func themeButton(_ theme: ReadingTheme) -> some View {
-        Button {
-            viewModel.readingTheme = theme
-        } label: {
             VStack(spacing: LBTheme.Spacing.sm) {
-                Circle()
-                    .fill(theme.backgroundColor)
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        Circle()
-                            .strokeBorder(
-                                viewModel.readingTheme == theme
-                                    ? Color.lbBlack
-                                    : Color.lbG200,
-                                lineWidth: viewModel.readingTheme == theme ? 2 : 1
-                            )
-                    }
-                    .overlay {
-                        Text("A")
-                            .font(LBTheme.serifFont(size: 16))
-                            .foregroundStyle(theme.textColor)
-                    }
-
-                Text(theme.displayName)
-                    .font(LBTheme.Typography.caption)
+                // Sample "Aa"
+                Text("Aa")
+                    .font(font.sampleFont(size: 22))
                     .foregroundStyle(
-                        viewModel.readingTheme == theme
-                            ? Color.lbBlack
-                            : Color.lbG400
+                        isSelected ? Color.lbNearBlack : Color.lbG400
+                    )
+
+                // Label
+                Text(font.displayName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(
+                        isSelected ? Color.lbNearBlack : Color.lbG500
                     )
             }
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.lbWhite)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(
+                        isSelected ? Color.lbBlack : Color.lbG200,
+                        lineWidth: 1.5
+                    )
+            }
         }
         .buttonStyle(.plain)
     }

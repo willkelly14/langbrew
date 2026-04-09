@@ -2,8 +2,8 @@ import SwiftUI
 
 // MARK: - Passages Grid View
 
-/// Displays the passages grid with search, filter pills, sort options,
-/// and a generate CTA card. Handles both empty and populated states.
+/// Displays the passages in sections: Generate CTA, Search+Sort,
+/// Recommended (featured card), In Progress (grid), Other Passages (grid).
 struct PassagesGridView: View {
     @Bindable var viewModel: LibraryViewModel
 
@@ -67,31 +67,68 @@ struct PassagesGridView: View {
 
     private var populatedState: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: LBTheme.Spacing.lg) {
-                // Search bar
-                SearchBar(query: $viewModel.searchQuery)
-
-                // Filter pills
-                FilterPills(
-                    selectedLevel: $viewModel.selectedLevel,
-                    sortOption: $viewModel.sortOption
-                )
-
+            VStack(spacing: LBTheme.Spacing.xl) {
                 // Generate CTA card
                 GenerateCTACard {
                     viewModel.showGenerateSheet()
                 }
 
-                // Passages grid
-                if viewModel.filteredPassages.isEmpty {
-                    noResultsView
-                } else {
+                // Search bar + Sort button row
+                SearchSortRow(query: $viewModel.searchQuery)
+
+                // Recommended section
+                if let featured = viewModel.recommendedPassage {
+                    SectionHeader(title: "Recommended")
+                    NavigationLink(value: featured) {
+                        FeaturedPassageCard(passage: featured)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // In Progress section
+                if !viewModel.inProgressPassages.isEmpty {
+                    SectionHeader(
+                        title: "In Progress",
+                        trailing: "\(viewModel.inProgressPassages.count) passages"
+                    )
                     LazyVGrid(columns: columns, spacing: LBTheme.Spacing.md) {
-                        ForEach(viewModel.filteredPassages) { passage in
-                            NavigationLink(value: passage.id) {
+                        ForEach(viewModel.inProgressPassages) { passage in
+                            NavigationLink(value: passage) {
                                 PassageCardView(passage: passage)
                             }
                             .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Other Passages section
+                if !viewModel.otherPassages.isEmpty {
+                    SectionHeader(
+                        title: "Other Passages",
+                        trailing: "See all \u{2192}"
+                    )
+                    LazyVGrid(columns: columns, spacing: LBTheme.Spacing.md) {
+                        ForEach(viewModel.otherPassages) { passage in
+                            NavigationLink(value: passage) {
+                                PassageCardView(passage: passage)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Fallback: if search is active, show filtered results
+                if !viewModel.searchQuery.isEmpty {
+                    if viewModel.filteredPassages.isEmpty {
+                        noResultsView
+                    } else {
+                        LazyVGrid(columns: columns, spacing: LBTheme.Spacing.md) {
+                            ForEach(viewModel.filteredPassages) { passage in
+                                NavigationLink(value: passage) {
+                                    PassageCardView(passage: passage)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
                 }
@@ -100,8 +137,11 @@ struct PassagesGridView: View {
             .padding(.top, LBTheme.Spacing.md)
             .padding(.bottom, 100)
         }
-        .navigationDestination(for: String.self) { passageId in
-            ReaderPlaceholderView(passageId: passageId)
+        .navigationDestination(for: PassageResponse.self) { passage in
+            ReaderView(
+                passage: passage,
+                vocabulary: MockPassageData.sampleVocabulary.filter { $0.passageId == passage.id }
+            )
         }
     }
 
@@ -125,185 +165,180 @@ struct PassagesGridView: View {
     }
 }
 
-// MARK: - Search Bar
+// MARK: - Section Header
 
-/// A styled search input for filtering passages by title, content, or topic.
-private struct SearchBar: View {
+/// Section header with serif title and optional trailing link text.
+private struct SectionHeader: View {
+    let title: String
+    var trailing: String? = nil
+
+    var body: some View {
+        HStack(alignment: .lastTextBaseline) {
+            Text(title)
+                .font(LBTheme.Typography.title2)
+                .foregroundStyle(Color.lbBlack)
+
+            Spacer()
+
+            if let trailing {
+                Button {} label: {
+                    Text(trailing)
+                        .font(LBTheme.Typography.caption)
+                        .foregroundStyle(Color.lbG500)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Search + Sort Row
+
+/// Search bar (g50 bg) + Sort button (g50 bg, sort icon).
+private struct SearchSortRow: View {
     @Binding var query: String
 
     var body: some View {
         HStack(spacing: LBTheme.Spacing.sm) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 15))
-                .foregroundStyle(Color.lbG400)
+            // Search bar
+            HStack(spacing: LBTheme.Spacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.lbG400)
 
-            TextField("Search passages...", text: $query)
-                .font(LBTheme.Typography.body)
-                .foregroundStyle(Color.lbBlack)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
+                TextField("Search passages...", text: $query)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.lbBlack)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
 
-            if !query.isEmpty {
-                Button {
-                    query = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.lbG300)
-                }
-            }
-        }
-        .padding(.horizontal, LBTheme.Spacing.md)
-        .padding(.vertical, LBTheme.Spacing.md)
-        .background(Color.lbWhite)
-        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-        .overlay {
-            RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                .strokeBorder(Color.lbG100, lineWidth: 1)
-        }
-    }
-}
-
-// MARK: - Filter Pills
-
-/// Horizontal scrolling filter pills for CEFR levels and sort options.
-private struct FilterPills: View {
-    @Binding var selectedLevel: CEFRLevel?
-    @Binding var sortOption: PassageSortOption
-
-    var body: some View {
-        VStack(spacing: LBTheme.Spacing.sm) {
-            // Level filters
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: LBTheme.Spacing.sm) {
-                    // "All" pill
-                    FilterPillButton(
-                        title: "All",
-                        isSelected: selectedLevel == nil
-                    ) {
-                        selectedLevel = nil
-                    }
-
-                    // CEFR level pills
-                    ForEach(CEFRLevel.allCases) { level in
-                        FilterPillButton(
-                            title: level.rawValue,
-                            isSelected: selectedLevel == level
-                        ) {
-                            if selectedLevel == level {
-                                selectedLevel = nil
-                            } else {
-                                selectedLevel = level
-                            }
-                        }
-                    }
-
-                    Divider()
-                        .frame(height: 20)
-                        .padding(.horizontal, LBTheme.Spacing.xs)
-
-                    // Sort pills
-                    ForEach(PassageSortOption.allCases) { option in
-                        FilterPillButton(
-                            title: option.rawValue,
-                            icon: sortIcon(for: option),
-                            isSelected: sortOption == option
-                        ) {
-                            sortOption = option
-                        }
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.lbG300)
                     }
                 }
             }
-        }
-    }
+            .padding(.horizontal, LBTheme.Spacing.lg)
+            .padding(.vertical, LBTheme.Spacing.md)
+            .background(Color.lbG50)
+            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
 
-    private func sortIcon(for option: PassageSortOption) -> String? {
-        switch option {
-        case .date: "calendar"
-        case .difficulty: "chart.bar"
-        case .topic: "tag"
-        }
-    }
-}
-
-/// An individual filter pill button.
-private struct FilterPillButton: View {
-    let title: String
-    let icon: String?
-    let isSelected: Bool
-    let action: () -> Void
-
-    init(
-        title: String,
-        icon: String? = nil,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.icon = icon
-        self.isSelected = isSelected
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: LBTheme.Spacing.xs) {
-                if let icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                Text(title)
-                    .font(LBTheme.Typography.caption)
-            }
-            .padding(.horizontal, LBTheme.Spacing.md)
-            .padding(.vertical, LBTheme.Spacing.sm)
-            .background(isSelected ? Color.lbBlack : Color.clear)
-            .foregroundStyle(isSelected ? Color.lbWhite : Color.lbBlack)
-            .clipShape(Capsule())
-            .overlay {
-                if !isSelected {
-                    Capsule()
-                        .strokeBorder(Color.lbG200, lineWidth: 1)
-                }
+            // Sort button
+            Button {} label: {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color.lbG500)
+                    .frame(width: 42, height: 42)
+                    .background(Color.lbG50)
+                    .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
             }
         }
-        .buttonStyle(.plain)
     }
 }
 
 // MARK: - Generate CTA Card
 
 /// A prominent dark card prompting users to generate a new passage.
-/// Placed at the top of the passages grid.
+/// Left: icon box with plus. Right: title + subtitle.
 private struct GenerateCTACard: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: LBTheme.Spacing.lg) {
-                VStack(alignment: .leading, spacing: LBTheme.Spacing.xs) {
-                    Text("Generate a Passage")
-                        .font(LBTheme.Typography.title2)
-                        .foregroundStyle(Color.lbWhite)
+                // Icon box
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(0.15))
+                        .frame(width: 40, height: 40)
 
-                    Text("Create unlimited stories from any topic.")
-                        .font(LBTheme.Typography.caption)
-                        .foregroundStyle(Color.lbG300)
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Color.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Generate Passage")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.white)
+
+                    Text("AI creates a text matched to your level")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.white.opacity(0.55))
                 }
 
                 Spacer()
-
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(Color.lbG300)
             }
-            .padding(LBTheme.Spacing.lg)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.lbBlack)
             .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-            .lbShadow(LBTheme.Shadow.elevated)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Featured Passage Card
+
+/// A large dark card for the recommended passage.
+/// Shows: level badge, AI Pick badge, title, meta, excerpt.
+private struct FeaturedPassageCard: View {
+    let passage: PassageResponse
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
+            // Badges row
+            HStack(spacing: LBTheme.Spacing.sm) {
+                // CEFR badge
+                Text(passage.cefrLevel)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.55))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                // AI Pick badge
+                HStack(spacing: 3) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 9))
+                    Text("AI Pick")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(Color.white.opacity(0.55))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                Spacer()
+            }
+
+            // Title
+            Text(passage.title)
+                .font(LBTheme.Typography.title2)
+                .foregroundStyle(Color.white)
+
+            // Meta
+            Text("\(passage.newWordCountLabel) \u{00B7} \(passage.knownPercentageLabel) \u{00B7} \(passage.readingTimeLabel)")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.white.opacity(0.4))
+
+            // Excerpt
+            Text(passage.excerpt)
+                .font(LBTheme.serifFont(size: 13))
+                .italic()
+                .foregroundStyle(Color.white.opacity(0.45))
+                .lineLimit(2)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.lbBlack)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 

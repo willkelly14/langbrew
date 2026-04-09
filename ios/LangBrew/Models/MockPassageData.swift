@@ -20,7 +20,8 @@ enum MockPassageData {
             topic: "Daily Life",
             wordCount: 89,
             estimatedMinutes: 4,
-            knownWordPercentage: 0.92,
+            knownWordPercentage: 0.96,
+            newWordCount: 12,
             isGenerated: true,
             style: "story",
             length: "short",
@@ -41,6 +42,7 @@ enum MockPassageData {
             wordCount: 112,
             estimatedMinutes: 5,
             knownWordPercentage: 0.85,
+            newWordCount: 15,
             isGenerated: true,
             style: "article",
             length: "medium",
@@ -61,6 +63,7 @@ enum MockPassageData {
             wordCount: 95,
             estimatedMinutes: 4,
             knownWordPercentage: 0.94,
+            newWordCount: 8,
             isGenerated: true,
             style: "letter",
             length: "short",
@@ -81,6 +84,7 @@ enum MockPassageData {
             wordCount: 142,
             estimatedMinutes: 7,
             knownWordPercentage: 0.78,
+            newWordCount: 22,
             isGenerated: true,
             style: "article",
             length: "long",
@@ -101,6 +105,7 @@ enum MockPassageData {
             wordCount: 68,
             estimatedMinutes: 3,
             knownWordPercentage: 0.96,
+            newWordCount: 5,
             isGenerated: true,
             style: "dialogue",
             length: "short",
@@ -133,8 +138,8 @@ enum MockPassageData {
             id: "vocab-002",
             passageId: "mock-001",
             word: "vendedores",
-            startIndex: 45,
-            endIndex: 55,
+            startIndex: 42,
+            endIndex: 52,
             isHighlighted: true,
             definition: "People who sell goods or services",
             translation: "sellers, vendors",
@@ -149,8 +154,8 @@ enum MockPassageData {
             id: "vocab-003",
             passageId: "mock-001",
             word: "amanecer",
-            startIndex: 76,
-            endIndex: 84,
+            startIndex: 70,
+            endIndex: 78,
             isHighlighted: true,
             definition: "The time of day when the sun rises",
             translation: "dawn, sunrise",
@@ -165,8 +170,8 @@ enum MockPassageData {
             id: "vocab-004",
             passageId: "mock-001",
             word: "panader\u{00ED}a",
-            startIndex: 250,
-            endIndex: 259,
+            startIndex: 292,
+            endIndex: 301,
             isHighlighted: true,
             definition: "A shop where bread and pastries are made and sold",
             translation: "bakery",
@@ -181,8 +186,8 @@ enum MockPassageData {
             id: "vocab-005",
             passageId: "mock-001",
             word: "aceite",
-            startIndex: 305,
-            endIndex: 311,
+            startIndex: 335,
+            endIndex: 341,
             isHighlighted: true,
             definition: "Oil, especially olive oil used in cooking",
             translation: "oil",
@@ -195,33 +200,30 @@ enum MockPassageData {
         ),
     ]
 
-    /// Suggested topics based on user interests for auto-generate mode.
+    /// Suggested topics for the custom generate mode suggested-topic box.
     static let suggestedTopics: [String] = [
-        "Travel",
-        "Food & Cooking",
-        "Technology",
-        "Music & Art",
-        "Sports",
-        "Daily Life",
-        "Nature",
-        "History",
-        "Science",
+        "A trip to the local market",
+        "Ordering food at a restaurant",
+        "A weekend at the beach",
+        "Meeting a new friend",
+        "A visit to the museum",
+        "Cooking a family recipe",
     ]
 
     /// Status messages displayed during passage generation loading.
     static let loadingMessages: [String] = [
         "Brewing your passage...",
-        "Finding the perfect words...",
-        "Crafting your story...",
         "Simmering the vocab...",
+        "Steeping in Spanish...",
+        "Blending the words...",
         "Almost ready...",
     ]
 
     /// Sample floating words for the loading animation.
     static let floatingWords: [String] = [
         "hola", "libro", "palabra", "leer", "sol",
-        "historia", "mundo", "tiempo", "agua", "casa",
-        "amigo", "vida", "ciudad", "comida", "noche",
+        "historia", "tiempo", "vida", "mundo", "luz",
+        "sue\u{00F1}o", "camino",
     ]
 
     /// Creates a new mock passage with a generated ID and current timestamp.
@@ -252,6 +254,7 @@ enum MockPassageData {
             wordCount: wordCount,
             estimatedMinutes: estimatedMinutes,
             knownWordPercentage: Double.random(in: 0.80...0.96),
+            newWordCount: Int.random(in: 5...20),
             isGenerated: true,
             style: style,
             length: length,

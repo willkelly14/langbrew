@@ -3,49 +3,56 @@ import SwiftUI
 // MARK: - Generate Passage Sheet
 
 /// Bottom sheet for configuring and triggering passage generation.
-/// Offers two modes: Auto (topic pills from interests) and Custom
-/// (topic input, style, length, difficulty pickers).
+/// Offers two modes: Auto (fully automatic) and Custom (suggested topic,
+/// custom input, style pills, length pills).
 struct GeneratePassageSheet: View {
     @Bindable var viewModel: LibraryViewModel
 
     var body: some View {
         LBBottomSheet {
-            VStack(alignment: .leading, spacing: LBTheme.Spacing.xl) {
+            VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
                 // Title
-                Text("Generate a Passage")
-                    .font(LBTheme.Typography.title2)
+                Text("Generate Passage")
+                    .font(LBTheme.serifFont(size: 24))
                     .foregroundStyle(Color.lbBlack)
 
-                // Mode picker
-                ModePicker(selectedMode: $viewModel.generateMode)
+                // Subtitle
+                Text("We\u{2019}ll create a passage matched to your level.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.lbG500)
+
+                // Mode toggle
+                ModeToggle(selectedMode: $viewModel.generateMode)
 
                 // Mode content
                 switch viewModel.generateMode {
                 case .auto:
-                    AutoModeContent(
-                        selectedTopics: viewModel.selectedAutoTopics,
-                        onToggle: { viewModel.toggleAutoTopic($0) }
-                    )
+                    AutoModeContent()
                 case .custom:
                     CustomModeContent(
-                        topic: $viewModel.customTopic,
+                        suggestedTopic: $viewModel.suggestedTopic,
+                        customTopic: $viewModel.customTopic,
                         selectedStyle: $viewModel.selectedStyle,
                         selectedLength: $viewModel.selectedLength,
-                        selectedDifficulty: $viewModel.selectedDifficulty
+                        onRefreshTopic: { viewModel.refreshSuggestedTopic() }
                     )
                 }
 
                 // Generate button
-                LBButton(
-                    "Generate",
-                    variant: .primary,
-                    icon: "sparkles",
-                    fullWidth: true
-                ) {
+                Button {
                     Task {
                         await viewModel.generatePassage()
                     }
+                } label: {
+                    Text("Generate Passage")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(Color.lbBlack)
+                        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
                 }
+                .buttonStyle(.plain)
                 .opacity(viewModel.canGenerate ? 1 : 0.5)
                 .disabled(!viewModel.canGenerate)
             }
@@ -53,10 +60,10 @@ struct GeneratePassageSheet: View {
     }
 }
 
-// MARK: - Mode Picker
+// MARK: - Mode Toggle
 
-/// Segmented control toggling between Auto and Custom generation modes.
-private struct ModePicker: View {
+/// Segmented control for Auto | Custom, matching the content-type tabs style.
+private struct ModeToggle: View {
     @Binding var selectedMode: GenerateMode
 
     var body: some View {
@@ -68,187 +75,195 @@ private struct ModePicker: View {
                     }
                 } label: {
                     Text(mode.displayName)
-                        .font(LBTheme.Typography.bodyMedium)
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(
-                            selectedMode == mode ? Color.lbBlack : Color.lbG400
+                            selectedMode == mode ? Color.lbNearBlack : Color.lbG500
                         )
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, LBTheme.Spacing.md)
+                        .padding(.vertical, 10)
                         .background(
                             selectedMode == mode ? Color.lbWhite : Color.clear
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .shadow(
+                            color: selectedMode == mode ? .black.opacity(0.08) : .clear,
+                            radius: 2, y: 1
+                        )
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(3)
         .background(Color.lbG50)
-        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 
 // MARK: - Auto Mode Content
 
-/// Auto mode: shows suggested topic pills from user interests.
+/// Auto mode: centered description text, no topic pills.
 private struct AutoModeContent: View {
-    let selectedTopics: Set<String>
-    let onToggle: (String) -> Void
-
     var body: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.md) {
-            Text("Pick a topic")
-                .font(LBTheme.Typography.bodyMedium)
-                .foregroundStyle(Color.lbBlack)
-
-            Text("We'll create a passage based on your interests.")
-                .font(LBTheme.Typography.caption)
-                .foregroundStyle(Color.lbG500)
-
-            OnboardingFlowLayout(spacing: LBTheme.Spacing.sm) {
-                ForEach(MockPassageData.suggestedTopics, id: \.self) { topic in
-                    TopicPill(
-                        title: topic,
-                        isSelected: selectedTopics.contains(topic)
-                    ) {
-                        onToggle(topic)
-                    }
-                }
-            }
-        }
+        Text("We\u{2019}ll pick the topic, style, and length based on your interests and level.")
+            .font(.system(size: 14))
+            .foregroundStyle(Color.lbG500)
+            .multilineTextAlignment(.center)
+            .lineSpacing(14 * 0.5)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, LBTheme.Spacing.xl)
     }
 }
 
 // MARK: - Custom Mode Content
 
-/// Custom mode: topic input, style picker, length picker, difficulty picker.
+/// Custom mode: suggested topic box, "or" divider, custom input,
+/// style pills, length pills.
 private struct CustomModeContent: View {
-    @Binding var topic: String
+    @Binding var suggestedTopic: String
+    @Binding var customTopic: String
     @Binding var selectedStyle: PassageStyle
     @Binding var selectedLength: PassageLength
-    @Binding var selectedDifficulty: CEFRLevel
+    let onRefreshTopic: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.xl) {
-            // Topic input
-            VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
-                Text("Topic")
-                    .font(LBTheme.Typography.bodyMedium)
-                    .foregroundStyle(Color.lbBlack)
+        VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
+            // Suggested topic label
+            Text("SUGGESTED TOPIC")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Color.lbG400)
+                .kerning(0.66)
 
-                TextField("What should the passage be about?", text: $topic)
-                    .font(LBTheme.Typography.body)
+            // Suggestion box
+            HStack {
+                Text(suggestedTopic)
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Color.lbNearBlack)
-                    .padding(.horizontal, LBTheme.Spacing.md)
-                    .padding(.vertical, LBTheme.Spacing.md)
-                    .background(Color.lbG50)
-                    .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: LBTheme.Radius.large)
-                            .strokeBorder(Color.lbG100, lineWidth: 1)
-                    }
+
+                Spacer()
+
+                // Refresh button
+                Button(action: onRefreshTopic) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.lbG500)
+                        .frame(width: 32, height: 32)
+                        .background(Color.lbWhite)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(Color.lbG200, lineWidth: 1.5)
+                        }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Color.lbG50)
+            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+            .overlay {
+                RoundedRectangle(cornerRadius: LBTheme.Radius.large)
+                    .strokeBorder(Color.lbG100, lineWidth: 1.5)
             }
 
-            // Style picker
-            OptionPicker(
-                title: "Style",
-                options: PassageStyle.allCases,
-                selected: $selectedStyle,
-                label: \.displayName
-            )
+            // "or" divider
+            Text("or")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.lbG400)
+                .frame(maxWidth: .infinity)
 
-            // Length picker
-            OptionPicker(
-                title: "Length",
-                options: PassageLength.allCases,
-                selected: $selectedLength,
-                label: \.displayName
-            )
+            // Custom input
+            TextField("Describe your own topic...", text: $customTopic)
+                .font(.system(size: 14))
+                .foregroundStyle(Color.lbNearBlack)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .background(Color.lbG50)
+                .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                .overlay {
+                    RoundedRectangle(cornerRadius: LBTheme.Radius.large)
+                        .strokeBorder(Color.lbG100, lineWidth: 1.5)
+                }
 
-            // Difficulty picker
-            OptionPicker(
-                title: "Difficulty",
-                options: CEFRLevel.allCases,
-                selected: $selectedDifficulty,
-                label: \.rawValue
-            )
+            // Style pills
+            PillSection(title: "STYLE") {
+                PillRow(
+                    options: PassageStyle.allCases,
+                    selected: $selectedStyle,
+                    label: \.displayName
+                )
+            }
+
+            // Length pills
+            PillSection(title: "LENGTH") {
+                PillRow(
+                    options: PassageLength.allCases,
+                    selected: $selectedLength,
+                    label: \.displayName
+                )
+            }
         }
     }
 }
 
-// MARK: - Option Picker
+// MARK: - Pill Section
 
-/// A horizontal pill picker for selecting from an array of options.
-private struct OptionPicker<T: Identifiable & Equatable & Sendable>: View {
+/// A labeled section with uppercase heading and content.
+private struct PillSection<Content: View>: View {
     let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Color.lbG400)
+                .kerning(0.66)
+
+            content()
+        }
+    }
+}
+
+// MARK: - Pill Row
+
+/// A horizontal row of selectable pills matching the mockup style:
+/// 1.5px g200 border, white bg, rounded 10px, 13px weight 500 g500.
+/// Active: black border, near-black text, weight 600.
+private struct PillRow<T: Identifiable & Equatable & Sendable>: View {
     let options: [T]
     @Binding var selected: T
     let label: (T) -> String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.sm) {
-            Text(title)
-                .font(LBTheme.Typography.bodyMedium)
-                .foregroundStyle(Color.lbBlack)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: LBTheme.Spacing.sm) {
-                    ForEach(options) { option in
-                        Button {
-                            selected = option
-                        } label: {
-                            Text(label(option))
-                                .font(LBTheme.Typography.caption)
-                                .padding(.horizontal, LBTheme.Spacing.md)
-                                .padding(.vertical, LBTheme.Spacing.sm)
-                                .background(
-                                    selected == option ? Color.lbBlack : Color.clear
-                                )
-                                .foregroundStyle(
-                                    selected == option ? Color.lbWhite : Color.lbBlack
-                                )
-                                .clipShape(Capsule())
-                                .overlay {
-                                    if selected != option {
-                                        Capsule()
-                                            .strokeBorder(Color.lbG200, lineWidth: 1)
-                                    }
-                                }
-                        }
-                        .buttonStyle(.plain)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: LBTheme.Spacing.sm) {
+                ForEach(options) { option in
+                    Button {
+                        selected = option
+                    } label: {
+                        Text(label(option))
+                            .font(.system(
+                                size: 13,
+                                weight: selected == option ? .semibold : .medium
+                            ))
+                            .foregroundStyle(
+                                selected == option ? Color.lbNearBlack : Color.lbG500
+                            )
+                            .padding(.horizontal, LBTheme.Spacing.md)
+                            .padding(.vertical, 10)
+                            .background(Color.lbWhite)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .strokeBorder(
+                                        selected == option ? Color.lbBlack : Color.lbG200,
+                                        lineWidth: 1.5
+                                    )
+                            }
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
-    }
-}
-
-// MARK: - Topic Pill
-
-/// A selectable topic pill for auto mode.
-private struct TopicPill: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(Color.lbNearBlack)
-                .padding(.horizontal, LBTheme.Spacing.lg)
-                .padding(.vertical, 10)
-                .background(isSelected ? Color.lbHighlight : Color.lbG50)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(
-                            isSelected ? Color.lbNearBlack : Color.lbG100,
-                            lineWidth: 1.5
-                        )
-                }
-        }
-        .buttonStyle(.plain)
     }
 }
 

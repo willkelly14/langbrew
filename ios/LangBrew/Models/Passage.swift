@@ -73,7 +73,7 @@ enum GenerateMode: String, Sendable, CaseIterable, Identifiable {
 // MARK: - Passage Response
 
 /// Matches the backend `PassageResponse` schema from `GET /v1/passages` and `GET /v1/passages/:id`.
-struct PassageResponse: Codable, Sendable, Identifiable {
+struct PassageResponse: Codable, Sendable, Identifiable, Hashable {
     let id: String
     let userId: String
     let userLanguageId: String
@@ -85,6 +85,7 @@ struct PassageResponse: Codable, Sendable, Identifiable {
     let wordCount: Int
     let estimatedMinutes: Int
     let knownWordPercentage: Double?
+    let newWordCount: Int?
     let isGenerated: Bool
     let style: String?
     let length: String?
@@ -111,6 +112,27 @@ struct PassageResponse: Codable, Sendable, Identifiable {
     /// Word count as a formatted string.
     var wordCountLabel: String {
         "\(wordCount) words"
+    }
+
+    /// New word count as a formatted string.
+    var newWordCountLabel: String {
+        "\(newWordCount ?? 0) new words"
+    }
+
+    /// Known word percentage as a formatted string.
+    var knownPercentageLabel: String {
+        let pct = Int((knownWordPercentage ?? 0) * 100)
+        return "\(pct)% known"
+    }
+
+    /// Whether this passage is currently being read (has partial progress).
+    var isInProgress: Bool {
+        readingProgress > 0 && readingProgress < 1.0
+    }
+
+    /// Whether this passage has not been started.
+    var isNotStarted: Bool {
+        readingProgress == 0
     }
 }
 

@@ -16,10 +16,10 @@ private struct WordSegment: Identifiable {
 
 /// Renders passage text with tappable highlighted vocabulary words.
 ///
-/// Vocabulary words get a cream background and dotted underline. Tapping a
-/// highlighted word triggers the word definition sheet. Long-pressing any word
-/// triggers the expanded word detail sheet. A "tap two words to select range"
-/// approach provides phrase selection.
+/// Vocabulary words get a cream highlight background (#ede8d2) and a solid
+/// bottom border (#c9be8a, 1.5px). Tapping a highlighted word triggers the
+/// word definition sheet. Long-pressing any word triggers the sentence
+/// translation sheet.
 struct HighlightedTextView: View {
     let content: String
     let vocabulary: [PassageVocabulary]
@@ -27,7 +27,6 @@ struct HighlightedTextView: View {
     let fontSize: CGFloat
     let lineSpacingValue: CGFloat
     let readingFont: ReadingFont
-    let theme: ReadingTheme
 
     let onWordTap: (PassageVocabulary) -> Void
     let onWordLongPress: (String) -> Void
@@ -55,16 +54,16 @@ struct HighlightedTextView: View {
     private func highlightedWordView(segment: WordSegment, vocab: PassageVocabulary) -> some View {
         Text(segment.text)
             .font(bodyFont)
-            .foregroundStyle(theme.textColor)
-            .padding(.horizontal, 2)
+            .foregroundStyle(Color.lbNearBlack)
+            .padding(.horizontal, 3)
             .padding(.vertical, 1)
-            .background(theme.highlightColor)
+            .background(Color.lbHighlight)
             .overlay(alignment: .bottom) {
-                DottedLine()
-                    .stroke(theme.textColor.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                    .frame(height: 1)
+                Rectangle()
+                    .fill(Color.lbHighlightBorder)
+                    .frame(height: 1.5)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .clipShape(RoundedRectangle(cornerRadius: 2))
             .onTapGesture {
                 onWordTap(vocab)
             }
@@ -78,11 +77,14 @@ struct HighlightedTextView: View {
     private func plainWordView(segment: WordSegment) -> some View {
         Text(segment.text)
             .font(bodyFont)
-            .foregroundStyle(theme.textColor)
+            .foregroundStyle(Color.lbNearBlack)
             .background(
                 isPhraseSelectMode && isInPhraseRange(segment)
-                    ? theme.highlightColor.opacity(0.5)
-                    : Color.clear
+                    ? Color.lbBlack : Color.clear
+            )
+            .foregroundStyle(
+                isPhraseSelectMode && isInPhraseRange(segment)
+                    ? Color.white : Color.lbNearBlack
             )
             .onLongPressGesture(minimumDuration: 0.5) {
                 // Extract the first actual word from the segment text.
@@ -96,12 +98,7 @@ struct HighlightedTextView: View {
     // MARK: - Font
 
     private var bodyFont: Font {
-        switch readingFont {
-        case .serif:
-            return LBTheme.serifFont(size: fontSize)
-        case .sansSerif:
-            return .system(size: fontSize)
-        }
+        readingFont.bodyFont(size: fontSize)
     }
 
     // MARK: - Segment Builder
@@ -227,18 +224,6 @@ struct HighlightedTextView: View {
     }
 }
 
-// MARK: - Dotted Line Shape
-
-/// A simple horizontal dotted line shape for vocabulary word underlines.
-private struct DottedLine: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: 0, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
-        }
-    }
-}
-
 // MARK: - Wrapping HStack
 
 /// A flow layout that wraps words onto new lines, similar to how text naturally
@@ -307,15 +292,15 @@ private struct WrappingHStack<Content: View>: View {
             content: MockData.spanishPassageContent,
             vocabulary: MockData.sampleVocabulary,
             allVocabulary: MockData.sampleVocabulary,
-            fontSize: 18,
-            lineSpacingValue: 9,
+            fontSize: 19,
+            lineSpacingValue: 19 * 0.85,
             readingFont: .serif,
-            theme: .sepia,
             onWordTap: { _ in },
             onWordLongPress: { _ in },
             onPhraseSelect: { _, _ in }
         )
-        .padding()
+        .padding(.horizontal, 36)
+        .padding(.vertical, 20)
     }
     .background(Color.lbLinen)
 }

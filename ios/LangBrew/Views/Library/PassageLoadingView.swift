@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Full-screen overlay shown during passage generation.
 /// Displays floating words rising like steam, with rotating status messages.
-/// Matches the L0 loading screen from the app spec.
+/// Matches the L0 loading screen from the mockup.
 struct PassageLoadingView: View {
     @State private var currentMessageIndex: Int = 0
     @State private var messageOpacity: Double = 1.0
@@ -27,8 +27,8 @@ struct PassageLoadingView: View {
 
                 // Status message
                 Text(messages[currentMessageIndex])
-                    .font(LBTheme.Typography.title2)
-                    .foregroundStyle(Color.lbBlack)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color.lbNearBlack)
                     .opacity(messageOpacity)
                     .animation(.easeInOut(duration: 0.4), value: messageOpacity)
 
@@ -62,6 +62,7 @@ struct PassageLoadingView: View {
 // MARK: - Floating Words View
 
 /// Animates words floating upward like steam, fading in and out.
+/// Words use Instrument Serif italic, color g300.
 private struct FloatingWordsView: View {
     @State private var particles: [FloatingWord] = []
 
@@ -74,6 +75,7 @@ private struct FloatingWordsView: View {
                 ForEach(particles) { particle in
                     Text(particle.text)
                         .font(LBTheme.serifFont(size: particle.fontSize))
+                        .italic()
                         .foregroundStyle(Color.lbG300)
                         .opacity(particle.opacity)
                         .position(x: particle.x, y: particle.y)
@@ -90,7 +92,7 @@ private struct FloatingWordsView: View {
         guard !words.isEmpty else { return }
 
         let word = words.randomElement() ?? "hola"
-        let fontSize = CGFloat.random(in: 16...28)
+        let fontSize = CGFloat.random(in: 11...19)
         let startX = CGFloat.random(in: 40...(size.width - 40))
         let startY = size.height + 20
 
@@ -113,7 +115,7 @@ private struct FloatingWordsView: View {
             particles[index].opacity = 0.6
         }
 
-        withAnimation(.linear(duration: 4.0)) {
+        withAnimation(.linear(duration: CGFloat.random(in: 6...9))) {
             particles[index].y = -30
         }
 
@@ -127,7 +129,7 @@ private struct FloatingWordsView: View {
     }
 
     private func removeOldWords() {
-        let cutoff = Date().addingTimeInterval(-5)
+        let cutoff = Date().addingTimeInterval(-10)
         particles.removeAll { $0.createdAt < cutoff }
     }
 }
