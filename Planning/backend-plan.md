@@ -10,7 +10,7 @@ LangBrew is a language learning iOS app currently in the design/mockup phase wit
 |-------|--------|---------|
 | **Backend** | FastAPI (Python) | Railway, always-on |
 | **Auth** | Supabase Auth | Apple/Google/email, 50K free MAUs |
-| **Database** | Neon Postgres | SQLAlchemy + asyncpg |
+| **Database** | Supabase Postgres | SQLAlchemy + asyncpg |
 | **Cache** | Upstash Redis | Rate limiting, caching |
 | **Storage** | Cloudflare R2 | Books, chapters, audio |
 | **LLM** | MiMo v2 Flash via OpenRouter | $0.09/$0.29 per M tokens. Config-swappable to Gemma 4 31B. |
@@ -30,13 +30,13 @@ LangBrew is a language learning iOS app currently in the design/mockup phase wit
 
 ## 1. Architecture Overview
 
-### Stack: FastAPI + Supabase Auth + Neon Postgres + Redis
+### Stack: FastAPI + Supabase Auth + Supabase Postgres + Redis
 
 | Component | Service | Cost (MVP) |
 |-----------|---------|------------|
 | App Server | Railway (FastAPI + uvicorn, always-on) | ~$5/mo |
 | Auth | Supabase Auth (Apple/Google/email) | Free (50K MAUs) |
-| Database | Neon Postgres (serverless) | Free (0.5 GB) |
+| Database | Supabase Postgres | Included with Supabase Pro ($25/mo covers auth + DB) |
 | Cache/Rate Limiting | Upstash Redis (serverless) | Free (10K cmd/day) |
 | Object Storage | Cloudflare R2 | Free (10 GB) |
 | Push Notifications | APNs via aioapns | Free |
@@ -49,15 +49,15 @@ LangBrew is a language learning iOS app currently in the design/mockup phase wit
 - **Today's Passage:** Server auto-generates a daily passage via background job (based on user interests + CEFR level). If already read, fall back to the most recent unread passage. Counts against passage usage limit.
 - **Auto-adjust difficulty:** Composite score from vocabulary mastery (% of words mastered at current CEFR level) + passage completion rate + conversation feedback scores. When composite crosses a threshold, server suggests a level-up via the `GET /v1/me/languages/:id/stats` response (include `suggested_level?: str` field). User must confirm the change — it is not forced.
 
-**Why Supabase Auth:** Eliminates 8+ auth endpoints. Apple Sign-In, Google Sign-In, email/password with verification, password reset, JWT issuance, and refresh token rotation are all handled by Supabase. The iOS app uses `supabase-swift` SDK. The FastAPI backend verifies Supabase JWTs with a single middleware dependency (~20 lines). User identity data lives in Supabase's `auth.users`; all app data (vocabulary, passages, progress) lives in Neon Postgres, linked by the Supabase user UUID.
+**Why Supabase Auth:** Eliminates 8+ auth endpoints. Apple Sign-In, Google Sign-In, email/password with verification, password reset, JWT issuance, and refresh token rotation are all handled by Supabase. The iOS app uses `supabase-swift` SDK. The FastAPI backend verifies Supabase JWTs with a single middleware dependency (~20 lines). User identity data lives in Supabase's `auth.users`; all app data (vocabulary, passages, progress) lives in Supabase Postgres, linked by the Supabase user UUID.
 
 **Auth flow:**
 1. iOS app authenticates via `supabase-swift` (Apple/Google/email)
 2. Supabase issues a JWT (HS256, signed with your project's JWT secret)
 3. iOS app sends JWT as `Authorization: Bearer <token>` on all API calls
 4. FastAPI middleware decodes and verifies JWT locally using `PyJWT` + the Supabase JWT secret
-5. Extracts `sub` (user UUID) from the token — used as `user_id` FK in all Neon tables
-6. On first authenticated request, FastAPI creates a `users` record in Neon if one doesn't exist (upsert by `supabase_uid`)
+5. Extracts `sub` (user UUID) from the token — used as `user_id` FK in all app tables
+6. On first authenticated request, FastAPI creates a `users` record in Supabase Postgres if one doesn't exist (upsert by `supabase_uid`)
 
 **Supabase free tier note:** Project pauses after 7 days of inactivity. Any real user activity prevents this. For production, upgrade to Supabase Pro ($25/mo) if needed.
 
@@ -212,7 +212,7 @@ POST   /v1/webhooks/appstore        — App Store Server Notifications V2 (JWS-v
 
 ---
 
-## 3. Data Models (Neon Postgres via SQLAlchemy + asyncpg)
+## 3. Data Models (Supabase Postgres via SQLAlchemy + asyncpg)
 
 All models include `id: UUID (PK)`, `created_at: Timestamp`, `updated_at: Timestamp` unless noted. Pydantic models handle API validation.
 
@@ -778,7 +778,7 @@ async def send_message(id: str, body: MessageRequest):
 
 **What Supabase handles:** Registration, login, Apple Sign-In, Google Sign-In, email verification, password reset, JWT issuance, refresh token rotation, session management.
 
-**What FastAPI handles:** JWT verification middleware (~20 lines), user record creation in Neon on first request, account deletion cascade.
+**What FastAPI handles:** JWT verification middleware (~20 lines), user record creation in Supabase Postgres on first request, account deletion cascade.
 
 **FastAPI auth dependency:**
 ```python
@@ -794,7 +794,7 @@ async def get_current_user(authorization: str = Header(...)) -> User:
 
 **iOS client:** Uses `supabase-swift` SDK for all auth flows. Token refresh is automatic.
 
-**Account deletion:** `DELETE /v1/me/account` queues a cascade job that deletes all user data from Neon + R2, then calls Supabase Admin API to delete the auth user.
+**Account deletion:** `DELETE /v1/me/account` queues a cascade job that deletes all user data from Supabase Postgres + R2, then calls Supabase Admin API to delete the auth user.
 
 ### Subscriptions: StoreKit 2 + App Store Server Notifications V2
 - Client handles purchase flow via StoreKit 2
@@ -905,8 +905,8 @@ Railway (FastAPI + uvicorn + ARQ worker, always-on)
   +---------+---------+
   |         |         |
   v         v         v
-Neon PG   Upstash   Cloudflare R2
-(free)    Redis     (books, chapters)
+Supabase  Upstash   Cloudflare R2
+Postgres  Redis     (books, chapters)
           (free)    (free)
 
 External APIs:
@@ -921,8 +921,7 @@ Webhooks:
 | Service | Monthly |
 |---------|---------|
 | Railway | $5 |
-| Supabase Auth | $0 (free tier) |
-| Neon Postgres | $0 |
+| Supabase (Auth + Postgres) | $0 (free tier) |
 | Upstash Redis | $0 |
 | Cloudflare R2 | $0 |
 | OpenRouter (MiMo) | ~$10-25 |
@@ -952,7 +951,7 @@ Japanese has no spaces between words.
 **Phase 1 — Foundation (Week 1-2):**
 - FastAPI scaffold + Docker + CI/CD on Railway
 - Supabase project setup (Apple/Google/email auth configured)
-- SQLAlchemy models + Alembic migrations + Neon setup
+- SQLAlchemy models + Alembic migrations + Supabase Postgres setup
 - Supabase JWT verification middleware
 - `GET /v1/me` with auto-create user on first call
 - User settings CRUD

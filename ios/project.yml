@@ -1,0 +1,60 @@
+name: LangBrew
+options:
+  bundleIdPrefix: com.langbrew
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift.git
+    from: "2.0.0"
+
+targets:
+  LangBrew:
+    type: application
+    platform: iOS
+    sources:
+      - path: LangBrew
+        excludes:
+          - "**/.gitkeep"
+          - "**/.DS_Store"
+          - "Fonts/**"
+      - path: LangBrew/Fonts
+        buildPhase: resources
+    dependencies:
+      - package: Supabase
+        product: Auth
+    # TODO: Re-enable entitlements when enrolled in Apple Developer Program ($99/yr).
+    # Requires paid account for Sign in with Apple + Push Notifications capabilities.
+    # entitlements:
+    #   path: LangBrew/LangBrew.entitlements
+    #   properties:
+    #     com.apple.developer.applesignin:
+    #       - Default
+    #     aps-environment: development
+    info:
+      path: LangBrew/Info.plist
+      properties:
+        UIAppFonts:
+          - InstrumentSerif-Regular.ttf
+          - InstrumentSerif-Italic.ttf
+          - InstrumentSans.ttf
+          - InstrumentSans-Italic.ttf
+        UILaunchScreen: {}
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.langbrew.app
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.langbrew.app
+        INFOPLIST_FILE: LangBrew/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
