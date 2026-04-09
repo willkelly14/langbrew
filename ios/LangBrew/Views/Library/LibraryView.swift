@@ -26,7 +26,7 @@ struct LibraryView: View {
 
                 VStack(spacing: 0) {
                     // Header
-                    LibraryHeader(selectedSubTab: $selectedSubTab)
+                    LibraryHeader(selectedSubTab: $selectedSubTab, activeFlag: viewModel.activeFlag)
 
                     // Content
                     switch selectedSubTab {
@@ -58,6 +58,7 @@ struct LibraryView: View {
 /// Top section of the Library with title, language switcher, and segmented control.
 private struct LibraryHeader: View {
     @Binding var selectedSubTab: LibrarySubTab
+    var activeFlag: String
 
     var body: some View {
         VStack(spacing: LBTheme.Spacing.lg) {
@@ -71,7 +72,7 @@ private struct LibraryHeader: View {
 
                 // Language switcher (flag emoji circle)
                 Button {} label: {
-                    Text("\u{1F1EA}\u{1F1F8}")
+                    Text(activeFlag)
                         .font(.system(size: 24))
                         .frame(width: 36, height: 36)
                         .background(Color.lbG50)

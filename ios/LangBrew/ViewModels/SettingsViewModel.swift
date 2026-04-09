@@ -80,8 +80,19 @@ final class SettingsViewModel {
     // MARK: - Computed
 
     /// The flag emoji for the active language.
+    /// Falls back through: coordinator cache → onboarding UserDefaults.
     var activeFlag: String {
-        FlagMapper.flag(for: activeLanguage)
+        let code: String
+        if !activeLanguage.isEmpty {
+            code = activeLanguage
+        } else if let lang = coordinator.currentUser?.activeLanguage?.targetLanguage {
+            code = lang
+        } else if let lang = coordinator.onboardingState.selectedLanguage {
+            code = lang
+        } else {
+            code = ""
+        }
+        return FlagMapper.flag(for: code)
     }
 
     /// The display name for the active language.
@@ -116,51 +127,58 @@ final class SettingsViewModel {
 
     // MARK: - Load from Coordinator
 
-    /// Populates all fields from the coordinator's cached `MeResponse`.
+    /// Populates all fields from the coordinator's cached `MeResponse`,
+    /// falling back to onboarding UserDefaults for the active language.
     func loadFromCoordinator() {
-        guard let me = coordinator.currentUser else { return }
+        if let me = coordinator.currentUser {
+            let user = me.user
+            userName = user.firstName
+            email = user.email
+            avatarUrl = user.avatarUrl
+            subscriptionTier = user.subscriptionTier
+            dailyGoalMinutes = user.dailyGoalMinutes
+            newWordsPerDay = user.newWordsPerDay
+            autoAdjustDifficulty = user.autoAdjustDifficulty
 
-        let user = me.user
-        userName = user.firstName
-        email = user.email
-        avatarUrl = user.avatarUrl
-        subscriptionTier = user.subscriptionTier
-        dailyGoalMinutes = user.dailyGoalMinutes
-        newWordsPerDay = user.newWordsPerDay
-        autoAdjustDifficulty = user.autoAdjustDifficulty
+            if let lang = me.activeLanguage {
+                activeLanguage = lang.targetLanguage
+                activeLanguageLevel = lang.cefrLevel
+                activeLanguageInterests = lang.interests
+                activeLanguageId = lang.id
+            }
 
-        if let lang = me.activeLanguage {
-            activeLanguage = lang.targetLanguage
-            activeLanguageLevel = lang.cefrLevel
-            activeLanguageInterests = lang.interests
-            activeLanguageId = lang.id
+            if let settings = me.settings {
+                readingTheme = settings.readingTheme
+                readingFont = settings.readingFont
+                fontSize = settings.fontSize
+                lineSpacing = settings.lineSpacing
+                vocabularyHighlights = settings.vocabularyHighlights
+                autoPlayAudio = settings.autoPlayAudio
+                highlightFollowing = settings.highlightFollowing
+                preferredVoiceId = settings.preferredVoiceId
+                voiceSpeed = settings.voiceSpeed
+
+                talkVoiceStyle = settings.talkVoiceStyle
+                talkCorrectionStyle = settings.talkCorrectionStyle
+                showTranscript = settings.showTranscript
+                autoSaveWords = settings.autoSaveWords
+                sessionLengthMinutes = settings.sessionLengthMinutes
+
+                reviewsPerSession = settings.reviewsPerSession
+                showExampleSentence = settings.showExampleSentence
+                audioOnReveal = settings.audioOnReveal
+
+                notificationsEnabled = settings.notificationsEnabled
+                reminderTime = settings.reminderTime
+                streakAlerts = settings.streakAlerts
+                reviewReminder = settings.reviewReminder
+            }
         }
 
-        if let settings = me.settings {
-            readingTheme = settings.readingTheme
-            readingFont = settings.readingFont
-            fontSize = settings.fontSize
-            lineSpacing = settings.lineSpacing
-            vocabularyHighlights = settings.vocabularyHighlights
-            autoPlayAudio = settings.autoPlayAudio
-            highlightFollowing = settings.highlightFollowing
-            preferredVoiceId = settings.preferredVoiceId
-            voiceSpeed = settings.voiceSpeed
-
-            talkVoiceStyle = settings.talkVoiceStyle
-            talkCorrectionStyle = settings.talkCorrectionStyle
-            showTranscript = settings.showTranscript
-            autoSaveWords = settings.autoSaveWords
-            sessionLengthMinutes = settings.sessionLengthMinutes
-
-            reviewsPerSession = settings.reviewsPerSession
-            showExampleSentence = settings.showExampleSentence
-            audioOnReveal = settings.audioOnReveal
-
-            notificationsEnabled = settings.notificationsEnabled
-            reminderTime = settings.reminderTime
-            streakAlerts = settings.streakAlerts
-            reviewReminder = settings.reviewReminder
+        // Fall back to onboarding state if activeLanguage is still empty
+        if activeLanguage.isEmpty, let code = coordinator.onboardingState.selectedLanguage {
+            activeLanguage = code
+            activeLanguageLevel = coordinator.onboardingState.selectedLevel ?? "A1"
         }
     }
 

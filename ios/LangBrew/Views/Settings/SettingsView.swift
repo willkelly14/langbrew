@@ -49,6 +49,9 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            viewModel.loadFromCoordinator()
+        }
         .confirmationDialog(
             "Sign Out",
             isPresented: $viewModel.showSignOutConfirmation,

@@ -8,6 +8,7 @@ struct HomeLanguageItem: Identifiable, Sendable {
     let id: String
     let language: String
     let flag: String
+    let cefrLevel: String
 }
 
 // MARK: - Home View Model
@@ -62,6 +63,16 @@ final class HomeViewModel {
 
     init(coordinator: AppCoordinator) {
         self.coordinator = coordinator
+        // Immediately populate active language from coordinator cache
+        // so the flag shows correctly before the API responds.
+        if let lang = coordinator.currentUser?.activeLanguage {
+            activeLanguage = lang.targetLanguage
+            activeLanguageLevel = lang.cefrLevel
+        } else if let lang = coordinator.onboardingState.selectedLanguage {
+            // Fall back to the language selected during onboarding (UserDefaults)
+            activeLanguage = lang
+            activeLanguageLevel = coordinator.onboardingState.selectedLevel ?? "A1"
+        }
         // Populate the language list from the coordinator's cached user data.
         populateLanguagesFromCoordinator()
     }
@@ -82,8 +93,19 @@ final class HomeViewModel {
     }
 
     /// The flag emoji for the active language.
+    /// Falls back through: coordinator cache → onboarding UserDefaults.
     var activeFlag: String {
-        FlagMapper.flag(for: activeLanguage)
+        let code: String
+        if !activeLanguage.isEmpty {
+            code = activeLanguage
+        } else if let lang = coordinator.currentUser?.activeLanguage?.targetLanguage {
+            code = lang
+        } else if let lang = coordinator.onboardingState.selectedLanguage {
+            code = lang
+        } else {
+            code = ""
+        }
+        return FlagMapper.flag(for: code)
     }
 
     // MARK: - Actions
@@ -106,6 +128,18 @@ final class HomeViewModel {
             if userName.isEmpty {
                 populateFromCoordinator()
             }
+        }
+
+        // If activeLanguage is still empty after the API call,
+        // refresh coordinator and try to populate from cache.
+        if activeLanguage.isEmpty {
+            await refreshCoordinatorUser()
+            populateFromCoordinator()
+        }
+
+        // Ensure languages list is populated for the picker.
+        if languages.isEmpty {
+            await fetchLanguagesList()
         }
 
         isLoading = false
@@ -152,10 +186,12 @@ final class HomeViewModel {
         if let lang = response.activeLanguage {
             activeLanguage = lang.targetLanguage
             activeLanguageLevel = lang.cefrLevel
+        } else if activeLanguage.isEmpty, let lang = coordinator.currentUser?.activeLanguage {
+            // API didn't return activeLanguage — use coordinator cache
+            activeLanguage = lang.targetLanguage
+            activeLanguageLevel = lang.cefrLevel
         }
 
-        // Update languages list from the coordinator if available
-        populateLanguagesFromCoordinator()
     }
 
     /// Populates basic fields from the coordinator's cached `MeResponse`
@@ -170,19 +206,31 @@ final class HomeViewModel {
             activeLanguage = lang.targetLanguage
             activeLanguageLevel = lang.cefrLevel
         }
-
-        populateLanguagesFromCoordinator()
     }
 
-    /// Builds the language picker list from the coordinator's user languages.
+    /// Builds the language picker list from the coordinator's cached active language,
+    /// falling back to the onboarding UserDefaults if the API hasn't loaded yet.
     private func populateLanguagesFromCoordinator() {
-        // Try to get languages from a separate API call or coordinator cache.
-        // For now, use coordinator's active language as a starting point
-        // and fetch the full list in the background.
-        if languages.isEmpty {
-            Task {
-                await fetchLanguagesList()
-            }
+        guard languages.isEmpty else { return }
+
+        if let lang = coordinator.currentUser?.activeLanguage {
+            languages = [
+                HomeLanguageItem(
+                    id: lang.id,
+                    language: lang.targetLanguage,
+                    flag: FlagMapper.flag(for: lang.targetLanguage),
+                    cefrLevel: lang.cefrLevel
+                )
+            ]
+        } else if let code = coordinator.onboardingState.selectedLanguage {
+            languages = [
+                HomeLanguageItem(
+                    id: "local",
+                    language: code,
+                    flag: FlagMapper.flag(for: code),
+                    cefrLevel: coordinator.onboardingState.selectedLevel ?? "A1"
+                )
+            ]
         }
     }
 
@@ -194,7 +242,8 @@ final class HomeViewModel {
                 HomeLanguageItem(
                     id: lang.id,
                     language: lang.targetLanguage,
-                    flag: FlagMapper.flag(for: lang.targetLanguage)
+                    flag: FlagMapper.flag(for: lang.targetLanguage),
+                    cefrLevel: lang.cefrLevel
                 )
             }
         } catch {
@@ -205,7 +254,8 @@ final class HomeViewModel {
                     HomeLanguageItem(
                         id: lang.id,
                         language: lang.targetLanguage,
-                        flag: FlagMapper.flag(for: lang.targetLanguage)
+                        flag: FlagMapper.flag(for: lang.targetLanguage),
+                        cefrLevel: lang.cefrLevel
                     )
                 ]
             }

@@ -60,6 +60,20 @@ struct MainTabView: View {
         .environment(\.hideTabBar, $hideTabBar)
         .ignoresSafeArea(.keyboard)
         .edgesIgnoringSafeArea(.bottom)
+        .task {
+            // Populate the library flag from the coordinator's cached user,
+            // falling back to onboarding UserDefaults.
+            if let lang = coordinator.currentUser?.activeLanguage {
+                libraryViewModel.activeFlag = FlagMapper.flag(for: lang.targetLanguage)
+            } else if let code = coordinator.onboardingState.selectedLanguage {
+                libraryViewModel.activeFlag = FlagMapper.flag(for: code)
+            }
+        }
+        .onChange(of: coordinator.currentUser?.activeLanguage?.targetLanguage) { _, newLang in
+            if let lang = newLang {
+                libraryViewModel.activeFlag = FlagMapper.flag(for: lang)
+            }
+        }
     }
 }
 

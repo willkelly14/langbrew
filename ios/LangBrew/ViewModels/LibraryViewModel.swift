@@ -90,6 +90,11 @@ final class LibraryViewModel {
     /// Whether the upgrade prompt should be shown (402 from API).
     var showUpgradeSheet: Bool = false
 
+    // MARK: - Active Language Flag
+
+    /// The flag emoji for the active language, set by MainTabView from the coordinator.
+    var activeFlag: String = "🌐"
+
     // MARK: - Pagination
 
     /// Cursor for the next page of results. Nil means no more pages.

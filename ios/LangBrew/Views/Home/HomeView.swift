@@ -42,9 +42,26 @@ struct HomeView: View {
                 await viewModel.loadHome()
             }
         }
-        .lbSheet(isPresented: $viewModel.showLanguagePicker) {
-            LanguagePickerSheet(viewModel: viewModel)
+        .overlay {
+            if viewModel.showLanguagePicker {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            viewModel.showLanguagePicker = false
+                        }
+                        .transition(.opacity)
+
+                    LanguagePickerOverlay(
+                        viewModel: viewModel,
+                        onDismiss: { viewModel.showLanguagePicker = false }
+                    )
+                    .padding(.bottom, 32)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.showLanguagePicker)
         .alert("Coming Soon", isPresented: $showComingSoonAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -310,42 +327,105 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Language Picker Sheet
+// MARK: - Language Picker Overlay
 
-/// A bottom sheet for switching the active language.
-struct LanguagePickerSheet: View {
+/// A custom overlay sheet for switching the active language,
+/// using the same `LBBottomSheet` pattern as `GeneratePassageSheet`.
+struct LanguagePickerOverlay: View {
     let viewModel: HomeViewModel
+    var onDismiss: (() -> Void)?
+    @State private var showComingSoonAlert = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LBTheme.Spacing.lg) {
-            Text("Choose Language")
-                .font(LBTheme.Typography.title2)
-                .foregroundStyle(Color.lbBlack)
+        LBBottomSheet(onDismiss: onDismiss) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Choose Language")
+                    .font(LBTheme.Typography.title2)
+                    .foregroundStyle(Color.lbBlack)
+                    .padding(.bottom, LBTheme.Spacing.lg)
 
-            ForEach(viewModel.languages) { language in
+                VStack(spacing: LBTheme.Spacing.xs) {
+                    ForEach(viewModel.languages) { language in
+                        let isActive = language.language == viewModel.activeLanguage
+
+                        Button {
+                            viewModel.switchLanguage(id: language.id)
+                        } label: {
+                            HStack(spacing: LBTheme.Spacing.md) {
+                                // Flag
+                                Text(language.flag)
+                                    .font(.system(size: 28))
+                                    .frame(width: 44, height: 44)
+                                    .background(isActive ? Color.lbHighlight : Color.lbG50)
+                                    .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
+
+                                // Names
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(FlagMapper.languageName(for: language.language))
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundStyle(Color.lbBlack)
+
+                                    Text(FlagMapper.nativeName(for: language.language))
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color.lbG400)
+                                }
+
+                                Spacer()
+
+                                // CEFR badge
+                                Text(language.cefrLevel)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(Color.lbG500)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.lbG50)
+                                    .clipShape(Capsule())
+
+                                // Active indicator
+                                if isActive {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(Color.lbBlack)
+                                }
+                            }
+                            .padding(.horizontal, LBTheme.Spacing.md)
+                            .padding(.vertical, LBTheme.Spacing.sm)
+                            .background(isActive ? Color.lbHighlight.opacity(0.3) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // Add Language button
                 Button {
-                    viewModel.switchLanguage(id: language.id)
+                    showComingSoonAlert = true
                 } label: {
                     HStack(spacing: LBTheme.Spacing.md) {
-                        Text(language.flag)
-                            .font(.system(size: 24))
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Color.lbG400)
+                            .frame(width: 44, height: 44)
+                            .background(Color.lbG50)
+                            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
 
-                        Text(FlagMapper.languageName(for: language.language))
-                            .font(LBTheme.Typography.bodyMedium)
-                            .foregroundStyle(Color.lbBlack)
+                        Text("Add Language")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.lbG400)
 
                         Spacer()
-
-                        if language.language == viewModel.activeLanguage {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.lbBlack)
-                        }
                     }
+                    .padding(.horizontal, LBTheme.Spacing.md)
                     .padding(.vertical, LBTheme.Spacing.sm)
                 }
                 .buttonStyle(.plain)
+                .padding(.top, LBTheme.Spacing.sm)
             }
+        }
+        .alert("Coming Soon", isPresented: $showComingSoonAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Adding new languages will be available in a future update.")
         }
     }
 }
