@@ -10,3 +10,5 @@ node_modules/
 *.db
 ios/.build/
 ios/.swiftpm/
+ios/Secrets.xcconfig
+ios/build/

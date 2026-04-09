@@ -85,6 +85,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AABB0011SECRETS00XCCONFIG /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		0251136A1504003B696EE424 /* LBAvatarCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LBAvatarCircle.swift; sourceTree = "<group>"; };
 		03222F98BD241973240024A5 /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
 		FA1C3D8E2B9A4F0E8C7D5A30 /* OnboardingSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSetupView.swift; sourceTree = "<group>"; };
@@ -203,6 +204,7 @@
 		19A4A7BF644B0E063EB12995 = {
 			isa = PBXGroup;
 			children = (
+				AABB0011SECRETS00XCCONFIG /* Secrets.xcconfig */,
 				032089DEB2F1DA93EA65B6C5 /* Fonts */,
 				45250D446D629FF607A01572 /* LangBrew */,
 				AE3560A8FB302371DB55FBFB /* Products */,
@@ -652,6 +654,7 @@
 		};
 		F2E1621BEE7AA8E9D13F063E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AABB0011SECRETS00XCCONFIG /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -672,6 +675,7 @@
 		};
 		F9874CDB2A02BB487C7D39DC /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AABB0011SECRETS00XCCONFIG /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
