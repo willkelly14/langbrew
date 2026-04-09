@@ -70,7 +70,13 @@ struct LBBottomSheet<Content: View>: View {
                     }
                     // Call dismiss after animation completes
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                        onDismiss?()
+                        // Disable animations so the exit transition doesn't
+                        // flash the sheet back on screen at offset 0.
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            onDismiss?()
+                        }
                         dragOffset = 0
                         isDismissing = false
                     }
