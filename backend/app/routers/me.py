@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import AuthenticatedUser, get_current_user
 from app.core.database import get_db
 from app.models.user import User
+from app.schemas.account import DeleteAccountRequest, DeleteAccountResponse
 from app.schemas.device_token import DeviceTokenCreate, DeviceTokenResponse
 from app.schemas.usage import UsageResponse
 from app.schemas.user import MeResponse, UserResponse, UserUpdate
@@ -20,6 +21,11 @@ from app.schemas.user_language import (
 )
 from app.schemas.user_settings import UserSettingsResponse, UserSettingsUpdate
 from app.services import user_service
+from app.services.account_service import (
+    ActiveSubscriptionError,
+    InvalidConfirmationError,
+    delete_account,
+)
 
 logger = structlog.stdlib.get_logger()
 
@@ -93,6 +99,73 @@ async def upload_avatar(
     await db.refresh(user)
 
     return UserResponse.model_validate(user)
+
+
+# ---------------------------------------------------------------------------
+# Account Deletion
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/account", response_model=DeleteAccountResponse)
+async def delete_my_account(
+    body: DeleteAccountRequest,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthenticatedUser = Depends(get_current_user),
+) -> DeleteAccountResponse:
+    """Permanently delete the authenticated user's account and all data.
+
+    Requires a confirmation string matching ``{first_name}-delete-account``
+    (case-insensitive).  Returns 400 if the confirmation is wrong, 403 if
+    the user has an active paid subscription, or 200 on success.
+    """
+    user = await _resolve_user(db, auth)
+
+    try:
+        await delete_account(db, user, body)
+    except InvalidConfirmationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "INVALID_CONFIRMATION",
+                    "message": (
+                        "Confirmation text does not match. "
+                        f"Please type '{user.first_name}-delete-account'."
+                    ),
+                    "details": {},
+                }
+            },
+        ) from None
+    except ActiveSubscriptionError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "ACTIVE_SUBSCRIPTION",
+                    "message": (
+                        "Cannot delete account with an active subscription. "
+                        "Please cancel your subscription first."
+                    ),
+                    "details": {},
+                }
+            },
+        ) from None
+    except Exception as exc:
+        logger.error("account_deletion_failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": {
+                    "code": "DELETION_FAILED",
+                    "message": "Account deletion failed. Please try again later.",
+                    "details": {},
+                }
+            },
+        ) from exc
+
+    return DeleteAccountResponse(
+        message="Your account and all associated data have been permanently deleted."
+    )
 
 
 # ---------------------------------------------------------------------------

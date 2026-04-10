@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -38,7 +39,10 @@ class Passage(Base, UUIDMixin, TimestampMixin):
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(String(10), nullable=False)
-    cefr_level: Mapped[CEFRLevel] = mapped_column(nullable=False)
+    cefr_level: Mapped[CEFRLevel] = mapped_column(
+        SAEnum(CEFRLevel, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
     word_count: Mapped[int] = mapped_column(nullable=False)
     estimated_minutes: Mapped[int] = mapped_column(nullable=False)
@@ -46,8 +50,14 @@ class Passage(Base, UUIDMixin, TimestampMixin):
     is_generated: Mapped[bool] = mapped_column(default=True, server_default="true")
     source_book_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     source_chapter_number: Mapped[int | None] = mapped_column(nullable=True)
-    style: Mapped[PassageStyle | None] = mapped_column(nullable=True)
-    length: Mapped[PassageLength | None] = mapped_column(nullable=True)
+    style: Mapped[PassageStyle | None] = mapped_column(
+        SAEnum(PassageStyle, values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
+    length: Mapped[PassageLength | None] = mapped_column(
+        SAEnum(PassageLength, values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
     reading_progress: Mapped[float] = mapped_column(default=0.0, server_default="0.0")
     bookmark_position: Mapped[int | None] = mapped_column(nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)

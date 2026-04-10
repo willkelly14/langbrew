@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret")
+os.environ.setdefault("SUPABASE_URL", "http://localhost:54321")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
 os.environ.setdefault("OPENROUTER_API_KEY", "test-key")
 os.environ.setdefault("MISTRAL_API_KEY", "test-key")
 os.environ.setdefault("R2_ACCESS_KEY_ID", "test-key")
@@ -100,6 +102,8 @@ def _make_redis_mock() -> AsyncMock:
     mock_redis.get = AsyncMock(return_value=None)
     mock_redis.set = AsyncMock(return_value=True)
     mock_redis.setex = AsyncMock(return_value=True)
+    mock_redis.delete = AsyncMock(return_value=1)
+    mock_redis.scan = AsyncMock(return_value=(0, []))
 
     mock_pipe = MagicMock()
     mock_pipe.zremrangebyscore = MagicMock(return_value=mock_pipe)

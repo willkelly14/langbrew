@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,15 +29,18 @@ class UserSettings(Base, UUIDMixin, TimestampMixin):
 
     # -- Reading settings --
     reading_theme: Mapped[ReadingTheme] = mapped_column(
+        SAEnum(ReadingTheme, values_callable=lambda x: [e.value for e in x]),
         default=ReadingTheme.LIGHT,
         server_default=ReadingTheme.LIGHT.value,
     )
     reading_font: Mapped[ReadingFont] = mapped_column(
+        SAEnum(ReadingFont, values_callable=lambda x: [e.value for e in x]),
         default=ReadingFont.SERIF,
         server_default=ReadingFont.SERIF.value,
     )
     font_size: Mapped[int] = mapped_column(default=16, server_default="16")
     line_spacing: Mapped[LineSpacing] = mapped_column(
+        SAEnum(LineSpacing, values_callable=lambda x: [e.value for e in x]),
         default=LineSpacing.NORMAL,
         server_default=LineSpacing.NORMAL.value,
     )

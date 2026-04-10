@@ -200,6 +200,9 @@ struct LoginView: View {
                 try? await authManager.resendSignUpCode(email: email)
                 isLoading = false
                 showVerification = true
+            } else if message.contains("invalid login credentials") || message.contains("invalid_credentials") {
+                errorMessage = "No account found for this email, or incorrect password. Please check your details or sign up."
+                isLoading = false
             } else {
                 errorMessage = error.localizedDescription
                 isLoading = false

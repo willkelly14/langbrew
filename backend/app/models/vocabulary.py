@@ -7,6 +7,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import JSON, ForeignKey, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
@@ -52,6 +53,7 @@ class VocabularyItem(Base, UUIDMixin, TimestampMixin):
     )
     language: Mapped[str] = mapped_column(String(10), nullable=False)
     type: Mapped[VocabularyType] = mapped_column(
+        SAEnum(VocabularyType, values_callable=lambda x: [e.value for e in x]),
         default=VocabularyType.WORD,
         server_default=VocabularyType.WORD.value,
     )
@@ -64,6 +66,7 @@ class VocabularyItem(Base, UUIDMixin, TimestampMixin):
     )
     example_sentence: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[VocabularyStatus] = mapped_column(
+        SAEnum(VocabularyStatus, values_callable=lambda x: [e.value for e in x]),
         default=VocabularyStatus.NEW,
         server_default=VocabularyStatus.NEW.value,
     )
@@ -102,7 +105,10 @@ class VocabularyEncounter(Base, UUIDMixin):
         ForeignKey("vocabulary_items.id", ondelete="CASCADE"),
         nullable=False,
     )
-    source_type: Mapped[SourceType] = mapped_column(nullable=False)
+    source_type: Mapped[SourceType] = mapped_column(
+        SAEnum(SourceType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     source_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
     context_sentence: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -119,6 +119,17 @@ actor UserService {
         return try await updateMe(update)
     }
 
+    // MARK: - Account Deletion
+
+    /// Permanently deletes the current user's account.
+    /// The backend requires a confirmation string matching `"{firstName}-delete-account"`.
+    ///
+    /// `DELETE /v1/me/account`
+    func deleteAccount(confirmation: String) async throws {
+        let body = DeleteAccountRequest(confirmation: confirmation)
+        try await api.delete("/me/account", body: body)
+    }
+
     // MARK: - Devices
 
     /// Registers an APNs device token for push notifications.

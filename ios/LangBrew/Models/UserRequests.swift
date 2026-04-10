@@ -82,6 +82,13 @@ struct UserLanguageUpdate: Codable, Sendable {
     var listeningLevel: String?
 }
 
+// MARK: - Delete Account (DELETE /v1/me/account)
+
+/// Request body for `DELETE /v1/me/account`.
+struct DeleteAccountRequest: Codable, Sendable {
+    let confirmation: String
+}
+
 // MARK: - Device Token Create (POST /v1/me/devices)
 
 /// Request body for `POST /v1/me/devices`.

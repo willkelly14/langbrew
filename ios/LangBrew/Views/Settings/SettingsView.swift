@@ -66,6 +66,12 @@ struct SettingsView: View {
         } message: {
             Text("Are you sure you want to sign out?")
         }
+        .overlay {
+            if viewModel.showDeleteAccountConfirmation {
+                DeleteAccountOverlay(viewModel: viewModel)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.showDeleteAccountConfirmation)
     }
 
     // MARK: - Section Label
@@ -455,7 +461,7 @@ struct SettingsView: View {
             SettingsDivider()
 
             Button {
-                // Delete account placeholder
+                viewModel.showDeleteAccount()
             } label: {
                 SettingsRow {
                     HStack {
@@ -530,6 +536,131 @@ private struct SettingsChevron: View {
         Text("\u{203A}")
             .font(.system(size: 16))
             .foregroundStyle(Color.lbG300)
+    }
+}
+
+// MARK: - Delete Account Overlay
+
+/// Full-screen overlay with a centered confirmation dialog for account deletion.
+/// Matches the app's overlay pattern (dimmed scrim + centered card).
+private struct DeleteAccountOverlay: View {
+    @Bindable var viewModel: SettingsViewModel
+
+    var body: some View {
+        ZStack {
+            // Scrim
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    if !viewModel.isDeletingAccount {
+                        viewModel.dismissDeleteAccount()
+                    }
+                }
+                .transition(.opacity)
+
+            // Dialog card
+            VStack(alignment: .leading, spacing: 0) {
+                // Title
+                Text("Delete Account?")
+                    .font(LBTheme.serifFont(size: 24))
+                    .foregroundStyle(Color.lbBlack)
+                    .padding(.bottom, 8)
+
+                // Warning message
+                Text("This action cannot be undone. All your data will be permanently deleted.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.lbG500)
+                    .lineSpacing(4)
+                    .padding(.bottom, 18)
+
+                // Confirmation prompt
+                Text("Type \(Text(viewModel.expectedConfirmation).bold()) to confirm:")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.lbG400)
+                    .padding(.bottom, 10)
+
+                // Text field
+                TextField(viewModel.expectedConfirmation, text: $viewModel.deleteAccountConfirmationText)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.lbNearBlack)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 13)
+                    .background(Color.lbG50)
+                    .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: LBTheme.Radius.large)
+                            .strokeBorder(Color.lbG100, lineWidth: 1.5)
+                    }
+                    .padding(.bottom, 8)
+
+                // Error message
+                if let error = viewModel.deleteAccountError {
+                    Text(error)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.red)
+                        .padding(.bottom, 8)
+                }
+
+                // Buttons
+                HStack(spacing: LBTheme.Spacing.md) {
+                    // Cancel
+                    Button {
+                        viewModel.dismissDeleteAccount()
+                    } label: {
+                        Text("Cancel")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.lbNearBlack)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.lbG50)
+                            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: LBTheme.Radius.large)
+                                    .strokeBorder(Color.lbG200, lineWidth: 1.5)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(viewModel.isDeletingAccount)
+
+                    // Delete
+                    Button {
+                        Task {
+                            await viewModel.performDeleteAccount()
+                        }
+                    } label: {
+                        HStack(spacing: LBTheme.Spacing.sm) {
+                            if viewModel.isDeletingAccount {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text("Delete")
+                                    .font(.system(size: 15, weight: .medium))
+                            }
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            viewModel.canConfirmDeletion && !viewModel.isDeletingAccount
+                                ? Color.red
+                                : Color.red.opacity(0.4)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!viewModel.canConfirmDeletion || viewModel.isDeletingAccount)
+                }
+                .padding(.top, 10)
+            }
+            .padding(24)
+            .background(Color.lbWhite)
+            .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
+            .lbShadow(LBTheme.Shadow.elevated)
+            .padding(.horizontal, LBTheme.Spacing.xl)
+            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+        }
     }
 }
 

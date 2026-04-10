@@ -177,7 +177,7 @@ async def test_home_streak_week(
     )
     db_session.add(streak_monday)
     db_session.add(streak_wednesday)
-    await db_session.flush()
+    await db_session.commit()
 
     response = await client.get("/v1/home")
 
@@ -214,7 +214,7 @@ async def test_home_streak_week_activity_any_column(
     ]
     for row in rows:
         db_session.add(row)
-    await db_session.flush()
+    await db_session.commit()
 
     response = await client.get("/v1/home")
     assert response.status_code == 200

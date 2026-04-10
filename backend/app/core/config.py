@@ -28,6 +28,9 @@ class Settings(BaseSettings):
 
     # Auth (Supabase)
     SUPABASE_JWT_SECRET: str
+    SUPABASE_JWT_JWK: str = ""
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
 
     # AI (OpenRouter)
     OPENROUTER_API_KEY: str

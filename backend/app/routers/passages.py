@@ -150,9 +150,7 @@ async def generate_passage(
                             style=style,
                             length=length,
                         )
-                        await increment_passages_used(
-                            db, user_id, subscription_tier
-                        )
+                        await increment_passages_used(db, user_id, subscription_tier)
                         await db.commit()
 
                         yield {

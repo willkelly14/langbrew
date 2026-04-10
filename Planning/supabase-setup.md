@@ -10,12 +10,13 @@ Manual steps to configure Supabase for LangBrew.
 4. Generate a strong database password (used for the Postgres connection string)
 5. Wait for project to provision
 
-## 2. Get JWT Secret
+## 2. Get JWT Keys
 
-1. Go to Project Settings → API
-2. Copy the **JWT Secret** (under "JWT Settings")
-3. Add to Railway env vars: `SUPABASE_JWT_SECRET=<secret>`
-4. Add to backend `.env` for local dev
+1. Go to Project Settings → API → JWT Settings
+2. Copy the **JWT Secret** → `SUPABASE_JWT_SECRET`
+3. Copy the **JWK** (public key JSON) → `SUPABASE_JWT_JWK`
+   - Supabase uses ES256 signing; the backend needs the public JWK to verify tokens
+4. Add both to Railway env vars and backend `.env` for local dev
 
 ## 3. Enable Auth Providers
 

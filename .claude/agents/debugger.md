@@ -36,8 +36,9 @@ You are the LangBrew debugger. You investigate failures and fix bugs.
 
 ## Common LangBrew-specific issues
 
-- **JWT verification failures:** Check `SUPABASE_JWT_SECRET` in env, check token
-  expiry, check PyJWT decode options (`algorithms=["HS256"]`).
+- **JWT verification failures:** Supabase uses ES256 signing. Check `SUPABASE_JWT_JWK`
+  in env (the public JWK from Supabase dashboard → API → JWT Settings). Falls back to
+  `SUPABASE_JWT_SECRET` with HS256 for legacy tokens. Check token expiry.
 - **Async session issues:** `AsyncSession` must be used within `async with` blocks.
   Never share sessions across tasks or let them escape their scope.
 - **SM-2 algorithm bugs:** Verify ease_factor bounds (minimum 1.3), interval

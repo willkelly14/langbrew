@@ -6,6 +6,7 @@ import uuid
 from datetime import date
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,7 +27,10 @@ class UsageMeter(Base, UUIDMixin, TimestampMixin):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    subscription_tier: Mapped[SubscriptionTier] = mapped_column(nullable=False)
+    subscription_tier: Mapped[SubscriptionTier] = mapped_column(
+        SAEnum(SubscriptionTier, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     period_start: Mapped[date] = mapped_column(nullable=False)
     period_end: Mapped[date] = mapped_column(nullable=False)
     passages_generated: Mapped[int] = mapped_column(default=0, server_default="0")

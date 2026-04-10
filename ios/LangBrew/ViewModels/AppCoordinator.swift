@@ -137,6 +137,28 @@ final class AppCoordinator {
         phase = .onboarding
     }
 
+    // MARK: - Account Deletion
+
+    /// Signs out, clears all local data, and resets to onboarding.
+    /// Called after the backend has successfully deleted the account.
+    func deleteAccountAndSignOut() async {
+        try? await authManager.signOut()
+        currentUser = nil
+        onboardingState.reset()
+
+        // Clear any cached data from UserDefaults
+        let defaults = UserDefaults.standard
+        let keysToRemove = defaults.dictionaryRepresentation().keys.filter {
+            $0.hasPrefix("com.langbrew.")
+                || $0.hasPrefix("lb_")
+        }
+        for key in keysToRemove {
+            defaults.removeObject(forKey: key)
+        }
+
+        phase = .onboarding
+    }
+
     // MARK: - Private Helpers
 
     /// Maps the backend `onboarding_step` to the local `OnboardingStep`

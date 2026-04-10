@@ -6,6 +6,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
@@ -28,10 +29,22 @@ class UserLanguage(Base, UUIDMixin, TimestampMixin):
         nullable=False,
     )
     target_language: Mapped[str] = mapped_column(String(10), nullable=False)
-    cefr_level: Mapped[CEFRLevel] = mapped_column(nullable=False)
-    reading_level: Mapped[CEFRLevel | None] = mapped_column(nullable=True)
-    speaking_level: Mapped[CEFRLevel | None] = mapped_column(nullable=True)
-    listening_level: Mapped[CEFRLevel | None] = mapped_column(nullable=True)
+    cefr_level: Mapped[CEFRLevel] = mapped_column(
+        SAEnum(CEFRLevel, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
+    reading_level: Mapped[CEFRLevel | None] = mapped_column(
+        SAEnum(CEFRLevel, values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
+    speaking_level: Mapped[CEFRLevel | None] = mapped_column(
+        SAEnum(CEFRLevel, values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
+    listening_level: Mapped[CEFRLevel | None] = mapped_column(
+        SAEnum(CEFRLevel, values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
     interests: Mapped[list[str]] = mapped_column(
         JSON, default=list, server_default="[]"
     )

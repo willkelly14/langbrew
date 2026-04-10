@@ -68,6 +68,13 @@ final class SettingsViewModel {
     var showSignOutConfirmation: Bool = false
     var shouldSignOut: Bool = false
 
+    // MARK: - Delete Account State
+
+    var showDeleteAccountConfirmation: Bool = false
+    var deleteAccountConfirmationText: String = ""
+    var isDeletingAccount: Bool = false
+    var deleteAccountError: String? = nil
+
     // MARK: - Dependencies
 
     private let coordinator: AppCoordinator
@@ -309,6 +316,60 @@ final class SettingsViewModel {
     /// Performs the actual sign-out via AppCoordinator.
     func performSignOut() async {
         await coordinator.signOut()
+    }
+
+    // MARK: - Delete Account
+
+    /// The expected confirmation string: `"{firstName}-delete-account"`, lowercased.
+    var expectedConfirmation: String {
+        "\(userName)-delete-account".lowercased()
+    }
+
+    /// Whether the typed confirmation matches the expected value.
+    var canConfirmDeletion: Bool {
+        deleteAccountConfirmationText.lowercased() == expectedConfirmation
+    }
+
+    /// Opens the delete account confirmation overlay.
+    func showDeleteAccount() {
+        deleteAccountConfirmationText = ""
+        deleteAccountError = nil
+        showDeleteAccountConfirmation = true
+    }
+
+    /// Dismisses the delete account confirmation overlay.
+    func dismissDeleteAccount() {
+        showDeleteAccountConfirmation = false
+        deleteAccountConfirmationText = ""
+        deleteAccountError = nil
+    }
+
+    /// Calls the backend to delete the account, then signs out.
+    func performDeleteAccount() async {
+        isDeletingAccount = true
+        deleteAccountError = nil
+
+        do {
+            try await UserService.shared.deleteAccount(
+                confirmation: deleteAccountConfirmationText
+            )
+            // Success: sign out and reset to onboarding
+            showDeleteAccountConfirmation = false
+            await coordinator.deleteAccountAndSignOut()
+        } catch let error as APIError {
+            switch error {
+            case .server(let code, _) where code == "ACTIVE_SUBSCRIPTION":
+                deleteAccountError = "Please cancel your subscription before deleting your account."
+            case .server(_, let message):
+                deleteAccountError = message
+            default:
+                deleteAccountError = error.localizedDescription
+            }
+        } catch {
+            deleteAccountError = error.localizedDescription
+        }
+
+        isDeletingAccount = false
     }
 
     // MARK: - Private Helpers
