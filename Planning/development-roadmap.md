@@ -42,18 +42,18 @@ Build reusable components matching `components.html` design system before any fe
 - `GET /v1/health` endpoint (checks DB + Redis)
 - Supabase JWT verification middleware (`app/core/auth.py`)
 - Standard error response format (Pydantic model)
-- Deploy to Railway: connect GitHub, set env vars, auto-deploy on push
-- Verify: `GET /v1/health` returns 200 from Railway URL
+- Deploy to Supabase: connect GitHub, set env vars, auto-deploy on push
+- Verify: `GET /v1/health` returns 200 from Supabase URL
 
 ### 0.4 CI/CD Pipeline
-- GitHub Actions: on push to main → lint (ruff) → test (pytest) → deploy to Railway
+- GitHub Actions: on push to main → lint (ruff) → test (pytest) → deploy to Supabase
 - Alembic migrations run on deploy
 - Verify: push a change, watch auto-deploy, health check passes
 
 ### 0.5 Supabase Auth Setup
 - Create Supabase project
 - Enable Apple Sign-In, Google Sign-In, email/password with verification
-- Note JWT secret → add to Railway env vars
+- Note JWT secret → add to backend env vars
 - Verify: create test user from dashboard, confirm JWT issued
 
 ---
@@ -630,7 +630,7 @@ Complete the remaining Settings sub-screens.
 - Graceful JWT expiry handling
 
 ### 13.3 Edge Cases
-- Railway 5-min SSE timeout → client retry logic
+- SSE timeout → client retry logic
 - Partial passage generation (SSE drops) → cleanup + retry
 - Book processing failure → error message + retry option
 - Concurrent sync from multiple devices

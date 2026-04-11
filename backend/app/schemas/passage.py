@@ -20,6 +20,7 @@ class PassageVocabularyResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
+    passage_id: uuid.UUID
     word: str
     start_index: int
     end_index: int

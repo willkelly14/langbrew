@@ -141,7 +141,7 @@ struct PassageResponse: Codable, Sendable, Identifiable, Hashable {
 /// A vocabulary annotation within a passage.
 struct PassageVocabulary: Codable, Sendable, Identifiable {
     let id: String
-    let passageId: String
+    let passageId: String?
     let word: String
     let startIndex: Int
     let endIndex: Int
@@ -244,9 +244,27 @@ struct PaginatedPassagesResponse: Codable, Sendable {
 // MARK: - Passage Detail Response
 
 /// Response from `GET /v1/passages/:id` including vocabulary annotations.
+/// The backend returns a flat response with vocabulary embedded as `vocabulary_annotations`.
 struct PassageDetailResponse: Codable, Sendable {
-    let passage: PassageResponse
-    let vocabulary: [PassageVocabulary]
+    let id: String
+    let userId: String
+    let userLanguageId: String
+    let title: String
+    let content: String
+    let language: String
+    let cefrLevel: String
+    let topic: String
+    let wordCount: Int
+    let estimatedMinutes: Int
+    let knownWordPercentage: Double?
+    let isGenerated: Bool
+    let style: String?
+    let length: String?
+    let readingProgress: Double
+    let bookmarkPosition: Int?
+    let vocabularyAnnotations: [PassageVocabulary]
+    let createdAt: String
+    let updatedAt: String
 }
 
 // MARK: - Passage Update Request

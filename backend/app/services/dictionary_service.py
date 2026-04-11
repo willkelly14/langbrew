@@ -142,7 +142,9 @@ async def select_sense(
         word, language, context_sentence, senses
     )
     try:
-        result = await ai_service.call_openrouter_raw(prompt, max_tokens=8)
+        result = await ai_service.call_openrouter_raw(
+            prompt, max_tokens=8, model=ai_service.FAST_MODEL
+        )
         # The LLM should reply with just a number
         sense_id = int(result.strip())
     except (ValueError, TypeError, KeyError, Exception):

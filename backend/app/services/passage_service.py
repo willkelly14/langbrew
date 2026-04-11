@@ -82,18 +82,14 @@ async def create_passage(
                 )
                 if entry is not None:
                     dictionary_entry_id = entry.id
-                    # Prefer dictionary values over AI-generated ones
+                    # Use dictionary for phonetic and word_type (more
+                    # reliable than AI), but keep the AI's definition
+                    # and translation which are richer than Kaikki's
+                    # brief English glosses.
                     if entry.phonetic:
                         phonetic = entry.phonetic
                     if entry.word_type:
                         word_type = entry.word_type
-                    senses = entry.senses or []
-                    if senses:
-                        first = senses[0]
-                        if first.get("definition"):
-                            definition = first["definition"]
-                        if first.get("translation"):
-                            translation = first["translation"]
             except Exception:
                 logger.debug(
                     "passage_vocab_dictionary_miss",

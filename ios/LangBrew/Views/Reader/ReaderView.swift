@@ -42,7 +42,10 @@ struct ReaderView: View {
         }
         .navigationBarHidden(true)
         .animation(.easeInOut(duration: 0.25), value: isShowingSheet)
-        .onAppear { hideTabBar.wrappedValue = true }
+        .onAppear {
+            hideTabBar.wrappedValue = true
+            Task { await viewModel.loadVocabulary() }
+        }
         .onDisappear { hideTabBar.wrappedValue = false }
     }
 
@@ -336,7 +339,7 @@ struct SentenceTranslationSheet: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        viewModel.addWordToBank()
+                        viewModel.saveSentenceToBank()
                         viewModel.dismissActiveSheet()
                     } label: {
                         Text("Save Sentence")

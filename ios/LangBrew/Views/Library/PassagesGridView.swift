@@ -140,7 +140,7 @@ struct PassagesGridView: View {
         .navigationDestination(for: PassageResponse.self) { passage in
             ReaderView(
                 passage: passage,
-                vocabulary: MockPassageData.sampleVocabulary.filter { $0.passageId == passage.id }
+                vocabulary: []
             )
         }
     }

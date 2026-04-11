@@ -16,7 +16,7 @@ Manual steps to configure Supabase for LangBrew.
 2. Copy the **JWT Secret** → `SUPABASE_JWT_SECRET`
 3. Copy the **JWK** (public key JSON) → `SUPABASE_JWT_JWK`
    - Supabase uses ES256 signing; the backend needs the public JWK to verify tokens
-4. Add both to Railway env vars and backend `.env` for local dev
+4. Add both to backend env vars and `.env` for local dev
 
 ## 3. Enable Auth Providers
 

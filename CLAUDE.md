@@ -13,10 +13,10 @@ AI conversation practice, and spaced repetition flashcards.
 | Cache    | Upstash Redis                                     |
 | Auth     | Supabase Auth (Apple/Google/email)                |
 | Storage  | Cloudflare R2                                     |
-| AI (LLM) | MiMo v2 Flash via OpenRouter                     |
+| AI (LLM) | MiMo v2 Flash (generation), Gemma 3n (translate/define) via OpenRouter |
 | TTS      | Qwen3-TTS 0.6B (on-device CoreML)                |
 | STT      | Voxtral Realtime via Mistral                      |
-| Hosting  | Railway (backend), App Store (iOS)                |
+| Hosting  | Supabase (backend), App Store (iOS)               |
 
 ## Project structure
 

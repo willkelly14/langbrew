@@ -131,7 +131,9 @@ enum MockPassageData {
             wordType: "noun",
             exampleSentence: "Voy al mercado cada s\u{00E1}bado.",
             conjugationHint: nil,
-            definitions: nil,
+            definitions: [
+                WordDefinition(definition: "A place where goods are bought and sold", example: "Voy al mercado cada s\u{00E1}bado.", meaning: "market")
+            ],
             usageNotes: nil
         ),
         PassageVocabulary(
@@ -147,7 +149,9 @@ enum MockPassageData {
             wordType: "noun",
             exampleSentence: "Los vendedores ofrecen precios buenos.",
             conjugationHint: nil,
-            definitions: nil,
+            definitions: [
+                WordDefinition(definition: "People who sell goods or services", example: "Los vendedores ofrecen precios buenos.", meaning: "sellers, vendors")
+            ],
             usageNotes: nil
         ),
         PassageVocabulary(
@@ -163,7 +167,9 @@ enum MockPassageData {
             wordType: "noun",
             exampleSentence: "El amanecer es muy bonito en la playa.",
             conjugationHint: nil,
-            definitions: nil,
+            definitions: [
+                WordDefinition(definition: "The time of day when the sun rises", example: "El amanecer es muy bonito en la playa.", meaning: "dawn, sunrise")
+            ],
             usageNotes: nil
         ),
         PassageVocabulary(
@@ -179,7 +185,9 @@ enum MockPassageData {
             wordType: "noun",
             exampleSentence: "La panader\u{00ED}a huele a pan reci\u{00E9}n hecho.",
             conjugationHint: nil,
-            definitions: nil,
+            definitions: [
+                WordDefinition(definition: "A shop where bread and pastries are made and sold", example: "La panader\u{00ED}a huele a pan reci\u{00E9}n hecho.", meaning: "bakery")
+            ],
             usageNotes: nil
         ),
         PassageVocabulary(
@@ -195,7 +203,9 @@ enum MockPassageData {
             wordType: "noun",
             exampleSentence: "El aceite de oliva es muy saludable.",
             conjugationHint: nil,
-            definitions: nil,
+            definitions: [
+                WordDefinition(definition: "Oil, especially olive oil used in cooking", example: "El aceite de oliva es muy saludable.", meaning: "oil")
+            ],
             usageNotes: nil
         ),
     ]

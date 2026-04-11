@@ -8,7 +8,7 @@ LangBrew is a language learning iOS app currently in the design/mockup phase wit
 
 | Layer | Choice | Details |
 |-------|--------|---------|
-| **Backend** | FastAPI (Python) | Railway, always-on |
+| **Backend** | FastAPI (Python) | Supabase (Edge Functions or self-hosted) |
 | **Auth** | Supabase Auth | Apple/Google/email, 50K free MAUs |
 | **Database** | Supabase Postgres | SQLAlchemy + asyncpg |
 | **Cache** | Upstash Redis | Rate limiting, caching |
@@ -34,7 +34,7 @@ LangBrew is a language learning iOS app currently in the design/mockup phase wit
 
 | Component | Service | Cost (MVP) |
 |-----------|---------|------------|
-| App Server | Railway (FastAPI + uvicorn, always-on) | ~$5/mo |
+| App Server | Supabase (FastAPI + uvicorn) | Free (included) |
 | Auth | Supabase Auth (Apple/Google/email) | Free (50K MAUs) |
 | Database | Supabase Postgres | Included with Supabase Pro ($25/mo covers auth + DB) |
 | Cache/Rate Limiting | Upstash Redis (serverless) | Free (10K cmd/day) |
@@ -766,7 +766,7 @@ async def send_message(id: str, body: MessageRequest):
     return EventSourceResponse(event_generator())
 ```
 
-**Railway:** 5-min max HTTP duration (sufficient). Send keepalive comments every 15s.
+**Supabase:** Send keepalive comments every 15s for long-running SSE connections.
 
 **TTS streaming:** Client begins Qwen3-TTS synthesis on the first complete sentence from the SSE stream. Buffer tokens, detect sentence boundaries, dispatch to TTS immediately.
 
@@ -900,7 +900,7 @@ Supabase Auth ←── iOS authenticates directly
        |
        | JWT verified locally by FastAPI
        v
-Railway (FastAPI + uvicorn + ARQ worker, always-on)
+Supabase (FastAPI + uvicorn + ARQ worker)
        |
   +---------+---------+
   |         |         |
@@ -920,17 +920,16 @@ Webhooks:
 ### Cost (~100 users)
 | Service | Monthly |
 |---------|---------|
-| Railway | $5 |
-| Supabase (Auth + Postgres) | $0 (free tier) |
+| Supabase (Auth + Postgres + Backend) | $0 (free tier) |
 | Upstash Redis | $0 |
 | Cloudflare R2 | $0 |
 | OpenRouter (MiMo) | ~$10-25 |
 | Mistral (Voxtral) | ~$5-15 |
 | Apple Developer | $8.25 |
-| **Total** | **~$30-55/month** |
+| **Total** | **~$25-50/month** |
 
 ### CI/CD
-- GitHub Actions: lint, test, build Docker image, deploy to Railway
+- GitHub Actions: lint, test, deploy to Supabase
 - Alembic for database migrations
 - Docker build: ~30-60 seconds
 
@@ -949,7 +948,7 @@ Japanese has no spaces between words.
 ## 12. MVP Build Sequence
 
 **Phase 1 — Foundation (Week 1-2):**
-- FastAPI scaffold + Docker + CI/CD on Railway
+- FastAPI scaffold + CI/CD on Supabase
 - Supabase project setup (Apple/Google/email auth configured)
 - SQLAlchemy models + Alembic migrations + Supabase Postgres setup
 - Supabase JWT verification middleware
