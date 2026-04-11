@@ -35,19 +35,19 @@ extension Color {
     static let lbG100 = Color(hex: "e0dbd0")
 
     /// Gray 200.
-    static let lbG200 = Color(hex: "c8c1b3")
+    static let lbG200 = Color(hex: "d0c8b8")
 
     /// Gray 300.
-    static let lbG300 = Color(hex: "a89f91")
+    static let lbG300 = Color(hex: "b8ae9f")
 
     /// Gray 400.
-    static let lbG400 = Color(hex: "8a8178")
+    static let lbG400 = Color(hex: "9e9385")
 
     /// Gray 500 - darkest warm gray.
-    static let lbG500 = Color(hex: "6d655d")
+    static let lbG500 = Color(hex: "7a7062")
 
     /// Off-white — primary surface white.
-    static let lbWhite = Color(hex: "faf9f6")
+    static let lbWhite = Color(hex: "ffffff")
 
     /// Linen cream - primary background.
     static let lbLinen = Color(hex: "f3f0ea")

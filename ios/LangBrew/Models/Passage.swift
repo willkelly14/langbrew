@@ -178,7 +178,39 @@ struct VocabularyItem: Codable, Sendable, Identifiable {
     let exampleSentence: String?
     let status: String // new, learning, known, mastered
     let language: String
+    let type: String // word, phrase, sentence
+    let easeFactor: Double
+    let interval: Int
+    let repetitions: Int
+    let nextReviewDate: String?
+    let timesReviewed: Int
+    let timesCorrect: Int
+    let lastReviewedAt: String?
     let createdAt: String
+    let updatedAt: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        text = try container.decode(String.self, forKey: .text)
+        translation = try container.decode(String.self, forKey: .translation)
+        phonetic = try container.decodeIfPresent(String.self, forKey: .phonetic)
+        wordType = try container.decodeIfPresent(String.self, forKey: .wordType)
+        definitions = try container.decodeIfPresent([WordDefinition].self, forKey: .definitions)
+        exampleSentence = try container.decodeIfPresent(String.self, forKey: .exampleSentence)
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? "new"
+        language = try container.decode(String.self, forKey: .language)
+        type = try container.decodeIfPresent(String.self, forKey: .type) ?? "word"
+        easeFactor = try container.decodeIfPresent(Double.self, forKey: .easeFactor) ?? 2.5
+        interval = try container.decodeIfPresent(Int.self, forKey: .interval) ?? 0
+        repetitions = try container.decodeIfPresent(Int.self, forKey: .repetitions) ?? 0
+        nextReviewDate = try container.decodeIfPresent(String.self, forKey: .nextReviewDate)
+        timesReviewed = try container.decodeIfPresent(Int.self, forKey: .timesReviewed) ?? 0
+        timesCorrect = try container.decodeIfPresent(Int.self, forKey: .timesCorrect) ?? 0
+        lastReviewedAt = try container.decodeIfPresent(String.self, forKey: .lastReviewedAt)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+    }
 }
 
 // MARK: - Phrase Translation
@@ -271,7 +303,7 @@ struct VocabularyItemCreate: Codable, Sendable {
     let exampleSentence: String?
     let language: String
     let type: String // word, phrase, sentence
-    let sourceType: String // passage, book_chapter, conversation
-    let sourceId: String
+    let sourceType: String? // passage, book_chapter, conversation
+    let sourceId: String?
     let contextSentence: String?
 }

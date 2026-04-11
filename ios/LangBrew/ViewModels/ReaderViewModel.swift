@@ -154,6 +154,10 @@ final class ReaderViewModel {
     var wordAdditionState: WordAdditionState = .idle
     private var undoTask: Task<Void, Never>?
 
+    /// Maps word text to the backend vocabulary item ID returned after saving,
+    /// so that undo can issue a DELETE to remove the item from the database.
+    private var addedWordItemIds: [String: String] = [:]
+
     // MARK: - Progress Debounce
 
     /// Task for debounced progress saving to the API.
@@ -288,11 +292,24 @@ final class ReaderViewModel {
     }
 
     /// Undoes adding the currently selected word.
+    /// If the word was already persisted to the backend, issues a DELETE request.
     func undoAddWord() {
         guard let word = selectedWord else { return }
         undoTask?.cancel()
         addedWords.remove(word)
         wordAdditionState = .undone
+
+        // Remove from the backend if the POST already completed.
+        if let itemId = addedWordItemIds.removeValue(forKey: word) {
+            let service = passageService
+            Task {
+                do {
+                    try await service.removeVocabularyItem(itemId)
+                } catch {
+                    // Best-effort deletion; don't block the UI on failure.
+                }
+            }
+        }
 
         // Reset to idle after a short delay.
         Task {
@@ -531,10 +548,21 @@ final class ReaderViewModel {
     }
 
     /// Persists a word addition to the API. Fails silently.
+    /// On success, stores the returned item ID so undo can delete it.
     private func addWordToAPI(word: String, vocab: PassageVocabulary?) async {
+        // Use the vocab translation if available; fall back to the first
+        // definition's meaning so we never send an empty string (the backend
+        // requires min_length=1 on `translation`).
+        let translation: String = {
+            if let t = vocab?.translation, !t.isEmpty { return t }
+            if let meaning = vocab?.definitions?.first?.meaning, !meaning.isEmpty { return meaning }
+            if let def = vocab?.definitions?.first?.definition, !def.isEmpty { return def }
+            return word
+        }()
+
         let request = VocabularyItemCreate(
             text: word,
-            translation: vocab?.translation ?? "",
+            translation: translation,
             phonetic: vocab?.phonetic,
             wordType: vocab?.wordType,
             definitions: vocab?.definitions,
@@ -547,7 +575,8 @@ final class ReaderViewModel {
         )
 
         do {
-            _ = try await passageService.addVocabularyItem(request)
+            let item = try await passageService.addVocabularyItem(request)
+            addedWordItemIds[word] = item.id
         } catch {
             // Silently fail; the word is still tracked locally.
         }

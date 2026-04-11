@@ -6,12 +6,14 @@ import SwiftUI
 /// content states, and word progress. Fetches data from `GET /v1/home`.
 struct HomeView: View {
     let coordinator: AppCoordinator
+    @Binding var selectedTab: LBTab
     @State private var viewModel: HomeViewModel
     @State private var showComingSoonAlert = false
     @State private var comingSoonFeature = ""
 
-    init(coordinator: AppCoordinator) {
+    init(coordinator: AppCoordinator, selectedTab: Binding<LBTab>) {
         self.coordinator = coordinator
+        self._selectedTab = selectedTab
         self._viewModel = State(initialValue: HomeViewModel(coordinator: coordinator))
     }
 
@@ -34,7 +36,7 @@ struct HomeView: View {
 
                     wordProgressSection
                 }
-                .padding(.horizontal, LBTheme.Spacing.lg)
+                .padding(.horizontal, 30)
                 .padding(.top, LBTheme.Spacing.lg)
                 .padding(.bottom, 100)
             }
@@ -128,19 +130,17 @@ struct HomeView: View {
     // MARK: - Streak Row (no card wrapper)
 
     private var streakRow: some View {
-        HStack(spacing: LBTheme.Spacing.sm) {
+        HStack(spacing: 10) {
             // Streak text
             HStack(spacing: 4) {
-                Text("🔥")
+                Text("\u{1F525}")
                     .font(.system(size: 13))
                 Text("\(viewModel.currentStreak) day streak")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.lbG500)
             }
 
-            Spacer()
-
-            // 7 small dots, no day labels
+            // 7 small dots
             HStack(spacing: 3) {
                 ForEach(0..<7, id: \.self) { index in
                     Circle()
@@ -148,6 +148,8 @@ struct HomeView: View {
                         .frame(width: 10, height: 10)
                 }
             }
+
+            Spacer()
         }
     }
 
@@ -170,8 +172,7 @@ struct HomeView: View {
 
             // Flashcards button
             Button {
-                comingSoonFeature = "Flashcard review"
-                showComingSoonAlert = true
+                selectedTab = .flashcards
             } label: {
                 quickActionContent(
                     icon: "rectangle.on.rectangle",
@@ -184,29 +185,30 @@ struct HomeView: View {
     }
 
     private func quickActionContent(icon: String, title: String, subtitle: String) -> some View {
-        HStack(spacing: LBTheme.Spacing.md) {
+        HStack(spacing: 10) {
             // Icon in rounded square container
             Image(systemName: icon)
                 .font(.system(size: 16))
-                .foregroundStyle(Color.lbNearBlack)
+                .foregroundStyle(Color.white)
                 .frame(width: 34, height: 34)
-                .background(Color.lbG200)
+                .background(Color.white.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.medium))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.lbNearBlack)
+                    .foregroundStyle(Color.white)
                 Text(subtitle)
                     .font(.system(size: 11))
-                    .foregroundStyle(Color.lbG400)
+                    .foregroundStyle(Color.white.opacity(0.45))
             }
 
             Spacer(minLength: 0)
         }
-        .padding(LBTheme.Spacing.md)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.lbG50)
+        .background(Color.lbBlack)
         .clipShape(RoundedRectangle(cornerRadius: LBTheme.Radius.large))
     }
 
@@ -312,10 +314,9 @@ struct HomeView: View {
                 LBStatCard(value: viewModel.wordStatsMastered, label: "Mastered")
             }
 
-            // "View all stats" link
+            // "View all stats" link -> navigates to Flashcards hub
             Button {
-                comingSoonFeature = "Word stats"
-                showComingSoonAlert = true
+                selectedTab = .flashcards
             } label: {
                 Text("View all stats \u{2192}")
                     .font(.system(size: 13, weight: .medium))
@@ -432,6 +433,6 @@ struct LanguagePickerOverlay: View {
 
 #Preview {
     NavigationStack {
-        HomeView(coordinator: AppCoordinator())
+        HomeView(coordinator: AppCoordinator(), selectedTab: .constant(.home))
     }
 }

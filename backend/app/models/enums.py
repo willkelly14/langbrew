@@ -90,3 +90,22 @@ class GenerateMode(enum.StrEnum):
 
     AUTO = "auto"
     CUSTOM = "custom"
+
+
+class StudyMode(enum.StrEnum):
+    """Flashcard study session mode."""
+
+    DAILY = "daily"
+    HARDEST = "hardest"
+    NEW = "new"
+    AHEAD = "ahead"
+    RANDOM = "random"
+
+
+class CardTypeFilter(enum.StrEnum):
+    """Filter vocabulary items by type in a study session."""
+
+    ALL = "all"
+    WORDS = "words"
+    PHRASES = "phrases"
+    SENTENCES = "sentences"

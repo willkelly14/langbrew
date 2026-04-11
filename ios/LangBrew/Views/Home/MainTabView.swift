@@ -8,6 +8,7 @@ struct MainTabView: View {
     @State private var selectedTab: LBTab = .home
     @State private var hideTabBar: Bool = false
     @State private var libraryViewModel = LibraryViewModel()
+    @State private var flashcardViewModel = FlashcardViewModel()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,14 +17,16 @@ struct MainTabView: View {
                 switch selectedTab {
                 case .home:
                     NavigationStack {
-                        HomeView(coordinator: coordinator)
+                        HomeView(coordinator: coordinator, selectedTab: $selectedTab)
                     }
                 case .library:
                     LibraryView(viewModel: libraryViewModel)
                 case .talk:
                     PlaceholderTabView(title: "Talk", icon: "bubble.left.and.bubble.right", subtitle: "AI conversation partners coming soon.")
                 case .flashcards:
-                    PlaceholderTabView(title: "Flashcards", icon: "rectangle.on.rectangle", subtitle: "Spaced repetition review sessions coming soon.")
+                    NavigationStack {
+                        FlashcardHubView(viewModel: flashcardViewModel)
+                    }
                 }
             }
             .frame(maxHeight: .infinity)
@@ -61,17 +64,23 @@ struct MainTabView: View {
         .ignoresSafeArea(.keyboard)
         .edgesIgnoringSafeArea(.bottom)
         .task {
-            // Populate the library flag from the coordinator's cached user,
-            // falling back to onboarding UserDefaults.
+            // Populate the library and flashcard flags from the coordinator's
+            // cached user, falling back to onboarding UserDefaults.
             if let lang = coordinator.currentUser?.activeLanguage {
-                libraryViewModel.activeFlag = FlagMapper.flag(for: lang.targetLanguage)
+                let flag = FlagMapper.flag(for: lang.targetLanguage)
+                libraryViewModel.activeFlag = flag
+                flashcardViewModel.activeFlag = flag
             } else if let code = coordinator.onboardingState.selectedLanguage {
-                libraryViewModel.activeFlag = FlagMapper.flag(for: code)
+                let flag = FlagMapper.flag(for: code)
+                libraryViewModel.activeFlag = flag
+                flashcardViewModel.activeFlag = flag
             }
         }
         .onChange(of: coordinator.currentUser?.activeLanguage?.targetLanguage) { _, newLang in
             if let lang = newLang {
-                libraryViewModel.activeFlag = FlagMapper.flag(for: lang)
+                let flag = FlagMapper.flag(for: lang)
+                libraryViewModel.activeFlag = flag
+                flashcardViewModel.activeFlag = flag
             }
         }
     }

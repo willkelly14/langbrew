@@ -38,10 +38,10 @@ struct LBPill: View {
         .padding(.vertical, LBTheme.Spacing.sm)
         .background(backgroundColor)
         .foregroundStyle(foregroundColor)
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay {
             if variant == .outlined {
-                Capsule()
+                RoundedRectangle(cornerRadius: 10)
                     .strokeBorder(Color.lbG200, lineWidth: 1)
             }
         }

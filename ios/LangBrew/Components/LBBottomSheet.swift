@@ -22,19 +22,19 @@ struct LBBottomSheet<Content: View>: View {
             // Drag indicator handle
             Capsule()
                 .fill(Color.lbG200)
-                .frame(width: 36, height: 5)
+                .frame(width: 36, height: 4)
                 .padding(.top, LBTheme.Spacing.md)
-                .padding(.bottom, LBTheme.Spacing.lg)
+                .padding(.bottom, 18)
 
             content()
                 .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, 24)
         .padding(.bottom, LBTheme.Spacing.md)
         .background(
             UnevenRoundedRectangle(
-                topLeadingRadius: 12,
-                topTrailingRadius: 12
+                topLeadingRadius: 16,
+                topTrailingRadius: 16
             )
             .fill(Color.lbWhite)
             .ignoresSafeArea(edges: .bottom)
