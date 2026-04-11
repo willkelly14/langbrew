@@ -286,6 +286,19 @@ final class AuthManager: Sendable {
 
     // MARK: - Token Refresh
 
+    /// Returns a valid access token, refreshing automatically if expired.
+    /// Prefer this over reading `accessToken` directly for API calls.
+    func validAccessToken() async throws -> String {
+        do {
+            let session = try await authClient.session
+            applySession(session)
+            return session.accessToken
+        } catch {
+            clearState()
+            throw AuthError.tokenRefreshFailed
+        }
+    }
+
     /// Refreshes the JWT access token using the stored refresh token.
     func refreshToken() async throws {
         do {

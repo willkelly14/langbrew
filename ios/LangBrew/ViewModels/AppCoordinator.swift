@@ -34,6 +34,9 @@ final class AppCoordinator {
     /// initial check completes, then transitions to `.onboarding` or `.main`.
     private(set) var phase: AppPhase = .loading
 
+    /// Shown as an alert when the user is redirected due to session expiry.
+    var sessionExpiredMessage: String?
+
     init(
         authManager: AuthManager = .shared,
         onboardingState: OnboardingState = OnboardingState()
@@ -131,9 +134,20 @@ final class AppCoordinator {
 
     /// Signs out and resets to the onboarding phase.
     func signOut() async {
-        try? await authManager.signOut()
         currentUser = nil
         onboardingState.reset()
+        phase = .onboarding
+        try? await authManager.signOut()
+    }
+
+    // MARK: - Auth Loss
+
+    /// Called when authentication is permanently lost (token refresh failed,
+    /// account deleted externally, etc.). Resets state and returns to onboarding.
+    func handleAuthLost() {
+        currentUser = nil
+        onboardingState.reset()
+        sessionExpiredMessage = "Your session has expired. Please sign in again."
         phase = .onboarding
     }
 
@@ -142,7 +156,6 @@ final class AppCoordinator {
     /// Signs out, clears all local data, and resets to onboarding.
     /// Called after the backend has successfully deleted the account.
     func deleteAccountAndSignOut() async {
-        try? await authManager.signOut()
         currentUser = nil
         onboardingState.reset()
 
@@ -157,6 +170,7 @@ final class AppCoordinator {
         }
 
         phase = .onboarding
+        try? await authManager.signOut()
     }
 
     // MARK: - Private Helpers

@@ -27,6 +27,22 @@ struct ContentView: View {
         .task {
             await coordinator.checkInitialState()
         }
+        .onChange(of: coordinator.authManager.isAuthenticated) { oldValue, newValue in
+            if oldValue == true && newValue == false && coordinator.phase == .main {
+                coordinator.handleAuthLost()
+            }
+        }
+        .alert(
+            "Session Expired",
+            isPresented: Binding(
+                get: { coordinator.sessionExpiredMessage != nil },
+                set: { if !$0 { coordinator.sessionExpiredMessage = nil } }
+            )
+        ) {
+            Button("OK") { coordinator.sessionExpiredMessage = nil }
+        } message: {
+            Text(coordinator.sessionExpiredMessage ?? "")
+        }
         .onOpenURL { url in
             Task {
                 try? await coordinator.authManager.handleOAuthCallback(url: url)

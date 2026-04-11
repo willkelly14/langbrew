@@ -203,25 +203,49 @@ actor APIClient {
             let task = Task {
                 do {
                     let url = baseURL.appendingPathComponent(path)
-                    var urlRequest = URLRequest(url: url)
-                    urlRequest.httpMethod = HTTPMethod.post.rawValue
-                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                    let bodyData = try encoder.encode(body)
 
-                    if let token = await AuthManager.shared.accessToken {
-                        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                    } else {
+                    func buildRequest() async throws -> URLRequest {
+                        var req = URLRequest(url: url)
+                        req.httpMethod = HTTPMethod.post.rawValue
+                        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                        req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                        let token = try await AuthManager.shared.validAccessToken()
+                        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                        req.httpBody = bodyData
+                        return req
+                    }
+
+                    var urlRequest: URLRequest
+                    do {
+                        urlRequest = try await buildRequest()
+                    } catch {
                         continuation.finish(throwing: APIError.unauthorized)
                         return
                     }
 
-                    urlRequest.httpBody = try encoder.encode(body)
+                    var (bytes, response) = try await session.bytes(for: urlRequest)
 
-                    let (bytes, response) = try await session.bytes(for: urlRequest)
-
-                    guard let httpResponse = response as? HTTPURLResponse else {
+                    guard var httpResponse = response as? HTTPURLResponse else {
                         continuation.finish(throwing: APIError.network(underlying: URLError(.badServerResponse)))
                         return
+                    }
+
+                    // Retry once on 401 after refreshing token
+                    if httpResponse.statusCode == 401 {
+                        do {
+                            try await AuthManager.shared.refreshToken()
+                            urlRequest = try await buildRequest()
+                            (bytes, response) = try await session.bytes(for: urlRequest)
+                            guard let retryResponse = response as? HTTPURLResponse else {
+                                continuation.finish(throwing: APIError.network(underlying: URLError(.badServerResponse)))
+                                return
+                            }
+                            httpResponse = retryResponse
+                        } catch {
+                            continuation.finish(throwing: APIError.unauthorized)
+                            return
+                        }
                     }
 
                     guard (200..<300).contains(httpResponse.statusCode) else {
@@ -299,7 +323,8 @@ actor APIClient {
         method: HTTPMethod,
         path: String,
         query: [String: String]? = nil,
-        body: (any Encodable & Sendable)? = nil
+        body: (any Encodable & Sendable)? = nil,
+        isRetry: Bool = false
     ) async throws -> T {
         var urlComponents = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)
 
@@ -316,10 +341,11 @@ actor APIClient {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        // Inject JWT from AuthManager
-        if let token = await AuthManager.shared.accessToken {
+        // Inject JWT from AuthManager (auto-refreshes if expired)
+        do {
+            let token = try await AuthManager.shared.validAccessToken()
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else {
+        } catch {
             throw APIError.unauthorized
         }
 
@@ -338,6 +364,19 @@ actor APIClient {
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.network(underlying: URLError(.badServerResponse))
+        }
+
+        // On 401, refresh token and retry once
+        if httpResponse.statusCode == 401 && !isRetry {
+            do {
+                try await AuthManager.shared.refreshToken()
+                return try await request(
+                    method: method, path: path, query: query,
+                    body: body, isRetry: true
+                )
+            } catch {
+                throw APIError.unauthorized
+            }
         }
 
         // Check for server errors
