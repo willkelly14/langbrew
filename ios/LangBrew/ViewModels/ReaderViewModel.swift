@@ -93,7 +93,8 @@ final class ReaderViewModel {
     // MARK: - Passage Data
 
     let passage: PassageResponse
-    let vocabulary: [PassageVocabulary]
+    private(set) var vocabulary: [PassageVocabulary]
+    private(set) var isLoadingVocabulary: Bool = false
 
     // MARK: - Reading Progress
 
@@ -125,6 +126,7 @@ final class ReaderViewModel {
     var selectedVocab: PassageVocabulary?
     var selectedWord: String?
     var isLoadingDefinition: Bool = false
+    var definitionError: String?
 
     /// When a non-highlighted word is long-pressed, we create a temporary
     /// vocabulary entry with a lookup from the API.
@@ -140,6 +142,21 @@ final class ReaderViewModel {
     var sentenceTranslation: String?
     /// Whether a sentence translation is being fetched.
     var isLoadingSentenceTranslation: Bool = false
+
+    // MARK: - Word Context (for definition popup)
+
+    /// The sentence from the passage that contains the tapped word.
+    var wordContextSentence: String?
+    /// English translation of the context sentence.
+    var wordContextTranslation: String?
+    /// English translation of the example sentence from the definition.
+    var wordExampleTranslation: String?
+    /// Whether context/example translations are being fetched.
+    var isLoadingWordContext: Bool = false
+    /// Error message when context sentence translation fails.
+    var wordContextTranslationError: String?
+    /// Error message when example sentence translation fails.
+    var wordExampleTranslationError: String?
 
     // MARK: - Phrase Selection
 
@@ -220,10 +237,30 @@ final class ReaderViewModel {
 
     /// Called when a highlighted word is tapped.
     func tapWord(_ vocab: PassageVocabulary) {
+        // Reset stale translation state from previous word lookup.
+        wordContextTranslation = nil
+        wordExampleTranslation = nil
+        wordContextSentence = nil
+        isLoadingWordContext = false
+        wordContextTranslationError = nil
+        wordExampleTranslationError = nil
+
         selectedVocab = vocab
         selectedWord = vocab.word
+        definitionError = nil
         showWordDefinition = true
         wordAdditionState = addedWords.contains(vocab.word) ? .added : .idle
+
+        // Extract the context sentence from the passage using the vocab's start index.
+        if let (sentence, _, _) = extractSentence(at: vocab.startIndex) {
+            wordContextSentence = sentence
+        }
+
+        // Fetch translations for the context sentence and example sentence in parallel.
+        fetchWordContextTranslations(
+            contextSentence: wordContextSentence,
+            exampleSentence: vocab.exampleSentence
+        )
     }
 
     /// Called when a non-highlighted word is tapped.
@@ -233,17 +270,110 @@ final class ReaderViewModel {
         if let vocab = vocabulary.first(where: { $0.word.lowercased() == word.lowercased() }) {
             tapWord(vocab)
         } else {
+            // Reset stale translation state from previous word lookup.
+            wordContextTranslation = nil
+            wordExampleTranslation = nil
+            wordContextSentence = nil
+            isLoadingWordContext = false
+            wordContextTranslationError = nil
+            wordExampleTranslationError = nil
+
             selectedWord = word
             selectedVocab = nil
+            definitionError = nil
             isLoadingDefinition = true
             showWordDefinition = true
 
+            // Find the word's position in the passage content to extract context sentence.
+            let content = passage.content
+            if let range = content.range(of: word, options: .caseInsensitive) {
+                let position = content.distance(from: content.startIndex, to: range.lowerBound)
+                if let (sentence, _, _) = extractSentence(at: position) {
+                    wordContextSentence = sentence
+                }
+            }
+
             Task {
                 let vocab = await fetchDefinition(for: word)
-                lookedUpVocab = vocab
-                selectedVocab = vocab
+                if let vocab {
+                    lookedUpVocab = vocab
+                    selectedVocab = vocab
+                    // Fetch translations now that we have the definition.
+                    fetchWordContextTranslations(
+                        contextSentence: wordContextSentence,
+                        exampleSentence: vocab.exampleSentence
+                    )
+                }
                 isLoadingDefinition = false
             }
+        }
+    }
+
+    /// Retries a failed definition lookup for the currently selected word.
+    func retryDefinition() {
+        guard let word = selectedWord else { return }
+        definitionError = nil
+        isLoadingDefinition = true
+
+        Task {
+            let vocab = await fetchDefinition(for: word)
+            if let vocab {
+                lookedUpVocab = vocab
+                selectedVocab = vocab
+                fetchWordContextTranslations(
+                    contextSentence: wordContextSentence,
+                    exampleSentence: vocab.exampleSentence
+                )
+            }
+            isLoadingDefinition = false
+        }
+    }
+
+    /// Retries fetching the context sentence translation.
+    func retryContextTranslation() {
+        wordContextTranslationError = nil
+        guard let sentence = wordContextSentence else { return }
+        isLoadingWordContext = true
+        let language = passage.language
+        let service = passageService
+        Task {
+            let request = TranslateRequest(
+                text: sentence,
+                sourceLanguage: language,
+                targetLanguage: "English",
+                context: nil
+            )
+            do {
+                let response = try await service.translatePhrase(request)
+                wordContextTranslation = response.translation
+            } catch {
+                wordContextTranslationError = errorDescription(error)
+            }
+            isLoadingWordContext = false
+        }
+    }
+
+    /// Retries fetching the example sentence translation.
+    func retryExampleTranslation() {
+        wordExampleTranslationError = nil
+        guard let vocab = selectedVocab, let example = vocab.exampleSentence else { return }
+        isLoadingWordContext = true
+        let language = passage.language
+        let service = passageService
+        Task {
+            let request = TranslateRequest(
+                text: example,
+                sourceLanguage: language,
+                targetLanguage: "English",
+                context: nil
+            )
+            do {
+                let response = try await service.translatePhrase(request)
+                wordExampleTranslation = response.translation
+            } catch {
+                wordExampleTranslationError = errorDescription(error)
+            }
+            isLoadingWordContext = false
         }
     }
 
@@ -376,6 +506,36 @@ final class ReaderViewModel {
         phraseTranslation = nil
     }
 
+    /// Saves the currently selected sentence to the Language Bank.
+    func saveSentenceToBank() {
+        guard let sentence = selectedSentence,
+              let translation = sentenceTranslation else {
+            return
+        }
+
+        // Persist to API in the background.
+        Task {
+            let request = VocabularyItemCreate(
+                text: sentence,
+                translation: translation,
+                phonetic: nil,
+                wordType: nil,
+                definitions: nil,
+                exampleSentence: nil,
+                language: passage.language,
+                type: "sentence",
+                sourceType: "passage",
+                sourceId: passage.id,
+                contextSentence: nil
+            )
+            do {
+                _ = try await passageService.addVocabularyItem(request)
+            } catch {
+                print("[ReaderVM] saveSentenceToBank failed: \(error)")
+            }
+        }
+    }
+
     /// Dismisses any active selection or sheet.
     func dismissSheets() {
         showWordDefinition = false
@@ -387,6 +547,12 @@ final class ReaderViewModel {
         lookedUpVocab = nil
         selectedPhrase = nil
         phraseTranslation = nil
+        wordContextSentence = nil
+        wordContextTranslation = nil
+        wordExampleTranslation = nil
+        isLoadingWordContext = false
+        wordContextTranslationError = nil
+        wordExampleTranslationError = nil
     }
 
     /// Dismisses the currently active sheet with animation-friendly single state change.
@@ -400,6 +566,13 @@ final class ReaderViewModel {
         sentenceTranslation = nil
         isLoadingSentenceTranslation = false
         selectedWord = nil
+        definitionError = nil
+        wordContextSentence = nil
+        wordContextTranslation = nil
+        wordExampleTranslation = nil
+        isLoadingWordContext = false
+        wordContextTranslationError = nil
+        wordExampleTranslationError = nil
     }
 
     // MARK: - Progress
@@ -428,14 +601,32 @@ final class ReaderViewModel {
         }
     }
 
+    // MARK: - Vocabulary Loading
+
+    /// Fetches vocabulary annotations from the passage detail API.
+    /// Called on appear when the initial vocabulary array is empty.
+    func loadVocabulary() async {
+        guard vocabulary.isEmpty else { return }
+        isLoadingVocabulary = true
+
+        do {
+            let detail = try await passageService.getPassage(passage.id)
+            vocabulary = detail.vocabularyAnnotations
+        } catch {
+            print("[ReaderVM] loadVocabulary failed: \(error)")
+        }
+
+        isLoadingVocabulary = false
+    }
+
     // MARK: - Private Helpers
 
     /// Fetches a word definition from the API, falling back to a mock on failure.
-    private func fetchDefinition(for word: String) async -> PassageVocabulary {
+    private func fetchDefinition(for word: String) async -> PassageVocabulary? {
         let request = DefineRequest(
             word: word,
             language: passage.language,
-            contextSentence: nil
+            contextSentence: wordContextSentence
         )
 
         do {
@@ -464,7 +655,8 @@ final class ReaderViewModel {
             )
         } catch {
             print("[ReaderVM] defineWord failed for '\(word)': \(error)")
-            return createMockLookup(for: word)
+            definitionError = errorDescription(error)
+            return nil
         }
     }
 
@@ -486,12 +678,11 @@ final class ReaderViewModel {
             )
         } catch {
             print("[ReaderVM] phraseTranslation failed for '\(phrase)': \(error)")
-            phraseTranslation = MockData.samplePhraseTranslations[phrase.lowercased()]
-                ?? PhraseTranslation(
-                    phrase: phrase,
-                    translation: "[Translation for: \(phrase)]",
-                    context: nil
-                )
+            phraseTranslation = PhraseTranslation(
+                phrase: phrase,
+                translation: "Translation failed: \(errorDescription(error))",
+                context: nil
+            )
         }
     }
 
@@ -543,9 +734,71 @@ final class ReaderViewModel {
             sentenceTranslation = response.translation
         } catch {
             print("[ReaderVM] sentenceTranslation failed: \(error)")
-            sentenceTranslation = "[Translation unavailable]"
+            sentenceTranslation = "Translation failed: \(errorDescription(error))"
         }
         isLoadingSentenceTranslation = false
+    }
+
+    /// Fetches English translations for the context sentence and example sentence
+    /// shown in the word definition popup. Both translations are fetched in parallel.
+    /// Errors are caught silently — the UI simply won't show a translation.
+    private func fetchWordContextTranslations(contextSentence: String?, exampleSentence: String?) {
+        // Nothing to translate if both are nil.
+        guard contextSentence != nil || exampleSentence != nil else { return }
+
+        isLoadingWordContext = true
+        let language = passage.language
+        let service = passageService
+
+        Task {
+            async let contextTranslation: String? = {
+                guard let sentence = contextSentence else { return nil }
+                let request = TranslateRequest(
+                    text: sentence,
+                    sourceLanguage: language,
+                    targetLanguage: "English",
+                    context: nil
+                )
+                do {
+                    let response = try await service.translatePhrase(request)
+                    return response.translation
+                } catch {
+                    return nil
+                }
+            }()
+
+            async let exampleTranslation: String? = {
+                guard let example = exampleSentence else { return nil }
+                let request = TranslateRequest(
+                    text: example,
+                    sourceLanguage: language,
+                    targetLanguage: "English",
+                    context: nil
+                )
+                do {
+                    let response = try await service.translatePhrase(request)
+                    return response.translation
+                } catch {
+                    return nil
+                }
+            }()
+
+            let ctxResult = await contextTranslation
+            let exResult = await exampleTranslation
+
+            wordContextTranslation = ctxResult
+            wordExampleTranslation = exResult
+
+            // Surface errors for sections that failed to translate.
+            if contextSentence != nil && ctxResult == nil {
+                wordContextTranslationError = "Translation unavailable"
+            }
+            if exampleSentence != nil && exResult == nil {
+                wordExampleTranslationError = "Translation unavailable"
+            }
+
+            isLoadingWordContext = false
+        }
     }
 
     /// Persists a word addition to the API. Fails silently.
@@ -583,29 +836,24 @@ final class ReaderViewModel {
         }
     }
 
-    /// Creates a mock vocabulary entry for a non-highlighted word lookup.
-    private func createMockLookup(for word: String) -> PassageVocabulary {
-        PassageVocabulary(
-            id: "lookup-\(word)",
-            passageId: passage.id,
-            word: word,
-            startIndex: 0,
-            endIndex: word.count,
-            isHighlighted: false,
-            definition: "Definition for \"\(word)\" would be fetched from the API.",
-            translation: "[\(word) translation]",
-            phonetic: "/\(word)/",
-            wordType: "unknown",
-            exampleSentence: "Example sentence using \"\(word)\" would appear here.",
-            conjugationHint: nil,
-            definitions: [
-                WordDefinition(
-                    definition: "Primary definition for \"\(word)\" would be fetched from the API.",
-                    example: "An example sentence would appear here.",
-                    meaning: nil
-                ),
-            ],
-            usageNotes: nil
-        )
+    /// Returns a user-readable description of an API error.
+    private func errorDescription(_ error: Error) -> String {
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .unauthorized:
+                return "Not signed in. Please sign in and try again."
+            case .usageLimitExceeded(let resource, _, _):
+                return "Monthly \(resource) limit reached. Upgrade for more."
+            case .server(_, let message):
+                return message
+            case .network:
+                return "Network error. Check your connection."
+            case .decodingFailed:
+                return "Unexpected response from server."
+            case .httpError(let code, _):
+                return "Server error (HTTP \(code))."
+            }
+        }
+        return error.localizedDescription
     }
 }

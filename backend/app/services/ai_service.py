@@ -15,8 +15,18 @@ from app.core.config import settings
 
 logger = structlog.stdlib.get_logger()
 
+
+class AIServiceError(Exception):
+    """Raised when the AI service returns an unusable response."""
+
+    def __init__(self, message: str, *, details: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        self.details = details or {}
+
+
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "xiaomi/mimo-v2-flash"
+FAST_MODEL = "google/gemma-4-31b-it"
 
 
 # ---------------------------------------------------------------------------
@@ -180,29 +190,66 @@ async def _call_openrouter(
     *,
     stream: bool = False,
     model: str = DEFAULT_MODEL,
+    max_retries: int = 2,
 ) -> dict[str, Any]:
-    """Make a non-streaming call to OpenRouter and return parsed JSON."""
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(
-            f"{OPENROUTER_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://langbrew.app",
-                "X-Title": "LangBrew",
-            },
-            json={
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7,
-                "max_tokens": 4096,
-                "stream": stream,
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
+    """Make a non-streaming call to OpenRouter and return parsed JSON.
 
-    content = data["choices"][0]["message"]["content"]
+    Retries on 429 (rate limit) with exponential backoff.
+    """
+    import asyncio
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        for attempt in range(max_retries + 1):
+            response = await client.post(
+                f"{OPENROUTER_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://langbrew.app",
+                    "X-Title": "LangBrew",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "stream": stream,
+                },
+            )
+            if (
+                response.status_code == 429 or response.status_code >= 500
+            ) and attempt < max_retries:
+                wait = 2**attempt  # 1s, 2s
+                logger.warning(
+                    "openrouter_retryable_error",
+                    status_code=response.status_code,
+                    attempt=attempt + 1,
+                    wait=wait,
+                    model=model,
+                )
+                await asyncio.sleep(wait)
+                continue
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise AIServiceError(
+                    f"OpenRouter returned HTTP {response.status_code}",
+                    details={
+                        "status_code": response.status_code,
+                        "model": model,
+                    },
+                ) from exc
+            break
+
+    try:
+        data = response.json()
+        content: str = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, ValueError) as exc:
+        raise AIServiceError(
+            "Unexpected response structure from OpenRouter",
+            details={"model": model},
+        ) from exc
+
     # Strip markdown code fences if the model wraps them
     content = content.strip()
     if content.startswith("```"):
@@ -213,7 +260,13 @@ async def _call_openrouter(
         content = content[:-3]
     content = content.strip()
 
-    return json.loads(content)
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise AIServiceError(
+            "Failed to parse JSON from OpenRouter response",
+            details={"model": model, "raw_content": content[:500]},
+        ) from exc
 
 
 async def call_openrouter_raw(
@@ -221,34 +274,68 @@ async def call_openrouter_raw(
     *,
     max_tokens: int = 16,
     model: str = DEFAULT_MODEL,
+    max_retries: int = 2,
 ) -> str:
     """Make a non-streaming call to OpenRouter and return raw text content.
 
     Unlike ``_call_openrouter`` this does **not** attempt JSON parsing,
     which is useful for tiny completions (e.g. sense-selection returning
-    just a number).
+    just a number).  Retries on 429 with exponential backoff.
     """
+    import asyncio
+
     async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            f"{OPENROUTER_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://langbrew.app",
-                "X-Title": "LangBrew",
-            },
-            json={
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.0,
-                "max_tokens": max_tokens,
-                "stream": False,
-            },
-        )
-        response.raise_for_status()
+        for attempt in range(max_retries + 1):
+            response = await client.post(
+                f"{OPENROUTER_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://langbrew.app",
+                    "X-Title": "LangBrew",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.0,
+                    "max_tokens": max_tokens,
+                    "stream": False,
+                },
+            )
+            if (
+                response.status_code == 429 or response.status_code >= 500
+            ) and attempt < max_retries:
+                wait = 2**attempt
+                logger.warning(
+                    "openrouter_retryable_error",
+                    status_code=response.status_code,
+                    attempt=attempt + 1,
+                    wait=wait,
+                    model=model,
+                )
+                await asyncio.sleep(wait)
+                continue
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise AIServiceError(
+                    f"OpenRouter returned HTTP {response.status_code}",
+                    details={
+                        "status_code": response.status_code,
+                        "model": model,
+                    },
+                ) from exc
+            break
+
         data = response.json()
 
-    return data["choices"][0]["message"]["content"]
+    try:
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError) as exc:
+        raise AIServiceError(
+            "Unexpected response structure from OpenRouter",
+            details={"model": model},
+        ) from exc
 
 
 async def generate_passage_stream(
@@ -340,7 +427,7 @@ async def define_word(
 ) -> dict[str, Any]:
     """Look up a word definition via the LLM."""
     prompt = _build_define_prompt(word, language, context_sentence)
-    return await _call_openrouter(prompt)
+    return await _call_openrouter(prompt, model=FAST_MODEL)
 
 
 async def translate_phrase(
@@ -351,4 +438,4 @@ async def translate_phrase(
 ) -> dict[str, Any]:
     """Translate a phrase or sentence via the LLM."""
     prompt = _build_translate_prompt(text, source_language, target_language, context)
-    return await _call_openrouter(prompt)
+    return await _call_openrouter(prompt, model=DEFAULT_MODEL)

@@ -24,6 +24,7 @@ from app.schemas.vocabulary import (
     VocabularyItemResponse,
 )
 from app.services import vocabulary_service
+from app.services.ai_service import AIServiceError
 from app.services.user_service import get_or_create_usage_meter, get_or_create_user
 
 if TYPE_CHECKING:
@@ -68,9 +69,24 @@ async def define_word(
     # Auth check only (no usage limit for definitions)
     await _resolve_user(db, auth)
 
-    result = await vocabulary_service.define_word(
-        redis, body.word, body.language, body.context_sentence, db=db
-    )
+    try:
+        result = await vocabulary_service.define_word(
+            redis, body.word, body.language, body.context_sentence, db=db
+        )
+    except AIServiceError as exc:
+        logger.warning("define_ai_error", word=body.word, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": {
+                    "code": "AI_SERVICE_ERROR",
+                    "message": (
+                        "Definition lookup temporarily unavailable. Please try again."
+                    ),
+                    "details": exc.details,
+                }
+            },
+        ) from exc
 
     # Normalise definitions into the response schema
     raw_defs = result.get("definitions", [])
@@ -136,11 +152,24 @@ async def translate_phrase(
             },
         )
 
-    result = await vocabulary_service.translate_phrase(
-        redis, body.text, body.source_language, body.target_language, body.context
-    )
+    try:
+        result = await vocabulary_service.translate_phrase(
+            redis, body.text, body.source_language, body.target_language, body.context
+        )
+    except AIServiceError as exc:
+        logger.warning("translate_ai_error", text=body.text[:50], error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": {
+                    "code": "AI_SERVICE_ERROR",
+                    "message": "Translation temporarily unavailable. Please try again.",
+                    "details": exc.details,
+                }
+            },
+        ) from exc
 
-    # Increment usage counter
+    # Increment usage counter (only on success)
     await increment_translations_used(db, user.id, user.subscription_tier)
 
     return TranslateResponse(

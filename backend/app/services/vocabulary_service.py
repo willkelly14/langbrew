@@ -57,21 +57,27 @@ async def create_vocabulary_item(
     enriched with canonical definitions so that flashcard practice uses
     consistent data.
     """
-    # Try to link to the canonical dictionary entry
-    dict_entry = await dictionary_service.lookup_word(db, text, language)
-    dict_entry_id = dict_entry.id if dict_entry else None
+    # Try to link to the canonical dictionary entry.
+    # Wrapped in try/except so vocabulary saves still work even if the
+    # dictionary tables are missing (e.g. migration 0004 not yet applied).
+    dict_entry_id: uuid.UUID | None = None
+    try:
+        dict_entry = await dictionary_service.lookup_word(db, text, language)
+        dict_entry_id = dict_entry.id if dict_entry else None
 
-    # Enrich with dictionary data when available
-    if dict_entry is not None:
-        resp = dictionary_service.entry_to_define_response(dict_entry)
-        if not phonetic and resp.get("phonetic"):
-            phonetic = resp["phonetic"]
-        if not word_type and resp.get("word_type"):
-            word_type = resp["word_type"]
-        if not definitions and resp.get("definitions"):
-            definitions = resp["definitions"]
-        if not example_sentence and resp.get("example_sentence"):
-            example_sentence = resp["example_sentence"]
+        # Enrich with dictionary data when available
+        if dict_entry is not None:
+            resp = dictionary_service.entry_to_define_response(dict_entry)
+            if not phonetic and resp.get("phonetic"):
+                phonetic = resp["phonetic"]
+            if not word_type and resp.get("word_type"):
+                word_type = resp["word_type"]
+            if not definitions and resp.get("definitions"):
+                definitions = resp["definitions"]
+            if not example_sentence and resp.get("example_sentence"):
+                example_sentence = resp["example_sentence"]
+    except Exception:
+        logger.warning("dictionary_enrichment_failed", text=text, language=language)
 
     item = VocabularyItem(
         user_id=user_id,
@@ -168,7 +174,11 @@ async def define_word(
     cache_key = _define_cache_key(word, language)
 
     # --- Tier 1: Redis cache ---
-    cached = await redis.get(cache_key)
+    try:
+        cached = await redis.get(cache_key)
+    except Exception:
+        logger.warning("define_cache_read_failed", word=word, language=language)
+        cached = None
     if cached:
         logger.debug("define_cache_hit", word=word, language=language)
         return json.loads(cached)
@@ -185,14 +195,15 @@ async def define_word(
                     redis, word, language, context_sentence, senses
                 )
 
-            result = dictionary_service.entry_to_define_response(
-                entry, active_sense_id
-            )
+            result = dictionary_service.entry_to_define_response(entry, active_sense_id)
 
             # Cache with a longer TTL for dictionary hits
-            await redis.setex(
-                cache_key, _DICT_CACHE_TTL, json.dumps(result)
-            )
+            try:
+                await redis.setex(cache_key, _DICT_CACHE_TTL, json.dumps(result))
+            except Exception:
+                logger.warning(
+                    "define_cache_write_failed", word=word, language=language
+                )
             logger.info(
                 "define_dictionary_hit",
                 word=word,
@@ -205,7 +216,10 @@ async def define_word(
     result = await ai_service.define_word(word, language, context_sentence)
 
     # Cache the AI result with the standard TTL
-    await redis.setex(cache_key, _DEFINE_CACHE_TTL, json.dumps(result))
+    try:
+        await redis.setex(cache_key, _DEFINE_CACHE_TTL, json.dumps(result))
+    except Exception:
+        logger.warning("define_cache_write_failed", word=word, language=language)
     logger.info("define_ai_fallback", word=word, language=language)
 
     return result
@@ -233,7 +247,11 @@ async def translate_phrase(
     cache_key = _translate_cache_key(text, source_language, target_language)
 
     # Check cache
-    cached = await redis.get(cache_key)
+    try:
+        cached = await redis.get(cache_key)
+    except Exception:
+        logger.warning("translate_cache_read_failed", text=text[:50])
+        cached = None
     if cached:
         logger.debug("translate_cache_hit", text=text[:50])
         return json.loads(cached)
@@ -244,7 +262,10 @@ async def translate_phrase(
     )
 
     # Cache the result
-    await redis.setex(cache_key, _TRANSLATE_CACHE_TTL, json.dumps(result))
+    try:
+        await redis.setex(cache_key, _TRANSLATE_CACHE_TTL, json.dumps(result))
+    except Exception:
+        logger.warning("translate_cache_write_failed", text=text[:50])
     logger.info("translate_cache_set", text=text[:50])
 
     return result
