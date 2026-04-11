@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, UUIDMixin
 
 if TYPE_CHECKING:
+    from app.models.dictionary import DictionaryEntry
     from app.models.passage import Passage
     from app.models.vocabulary import VocabularyItem
 
@@ -33,6 +34,10 @@ class PassageVocabulary(Base, UUIDMixin):
         ForeignKey("vocabulary_items.id", ondelete="SET NULL"),
         nullable=True,
     )
+    dictionary_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("dictionary_entries.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     word: Mapped[str] = mapped_column(String(255), nullable=False)
     start_index: Mapped[int] = mapped_column(nullable=False)
     end_index: Mapped[int] = mapped_column(nullable=False)
@@ -50,6 +55,9 @@ class PassageVocabulary(Base, UUIDMixin):
     )
     vocabulary_item: Mapped[VocabularyItem | None] = relationship(
         "VocabularyItem", lazy="selectin"
+    )
+    dictionary_entry: Mapped[DictionaryEntry | None] = relationship(
+        "DictionaryEntry", lazy="selectin"
     )
 
     def __repr__(self) -> str:

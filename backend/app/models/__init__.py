@@ -2,6 +2,7 @@
 
 from app.models.base import Base
 from app.models.device_token import DeviceToken
+from app.models.dictionary import DictionaryEntry, DictionaryForm
 from app.models.enums import (
     CardTypeFilter,
     CEFRLevel,
@@ -34,6 +35,8 @@ __all__ = [
     "CEFRLevel",
     "CardTypeFilter",
     "DeviceToken",
+    "DictionaryEntry",
+    "DictionaryForm",
     "GenerateMode",
     "LineSpacing",
     "Passage",

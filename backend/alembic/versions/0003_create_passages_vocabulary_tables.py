@@ -9,6 +9,8 @@ Create Date: 2026-04-10
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ENUM as pgEnum
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -19,6 +21,27 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # Pre-create enum types if they don't already exist.
+    # (They may have been created by earlier schema tooling.)
+    conn = op.get_bind()
+    for enum_name, values in [
+        ("cefrlevel", ("A1", "A2", "B1", "B2", "C1")),
+        ("passagestyle", ("article", "dialogue", "story", "letter")),
+        ("passagelength", ("short", "medium", "long")),
+        ("vocabularytype", ("word", "phrase", "sentence")),
+        ("vocabularystatus", ("new", "learning", "known", "mastered")),
+        ("sourcetype", ("passage", "book_chapter", "conversation")),
+        ("studymode", ("daily", "hardest", "new", "ahead", "random")),
+        ("cardtypefilter", ("all", "words", "phrases", "sentences")),
+    ]:
+        exists = conn.execute(
+            sa.text("SELECT 1 FROM pg_type WHERE typname = :n"),
+            {"n": enum_name},
+        ).scalar()
+        if not exists:
+            vals = ", ".join(f"'{v}'" for v in values)
+            conn.execute(sa.text(f"CREATE TYPE {enum_name} AS ENUM ({vals})"))
+
     # --- passages ---
     op.create_table(
         "passages",
@@ -30,7 +53,7 @@ def upgrade() -> None:
         sa.Column("language", sa.String(10), nullable=False),
         sa.Column(
             "cefr_level",
-            sa.Enum("A1", "A2", "B1", "B2", "C1", name="cefrlevel", create_type=False),
+            pgEnum("A1", "A2", "B1", "B2", "C1", name="cefrlevel", create_type=False),
             nullable=False,
         ),
         sa.Column("topic", sa.String(255), nullable=False),
@@ -47,18 +70,19 @@ def upgrade() -> None:
         sa.Column("source_chapter_number", sa.Integer(), nullable=True),
         sa.Column(
             "style",
-            sa.Enum(
+            pgEnum(
                 "article",
                 "dialogue",
                 "story",
                 "letter",
                 name="passagestyle",
+                create_type=False,
             ),
             nullable=True,
         ),
         sa.Column(
             "length",
-            sa.Enum("short", "medium", "long", name="passagelength"),
+            pgEnum("short", "medium", "long", name="passagelength", create_type=False),
             nullable=True,
         ),
         sa.Column(
@@ -99,7 +123,10 @@ def upgrade() -> None:
         sa.Column("language", sa.String(10), nullable=False),
         sa.Column(
             "type",
-            sa.Enum("word", "phrase", "sentence", name="vocabularytype"),
+            pgEnum(
+                "word", "phrase", "sentence",
+                name="vocabularytype", create_type=False,
+            ),
             server_default="word",
             nullable=False,
         ),
@@ -111,7 +138,10 @@ def upgrade() -> None:
         sa.Column("example_sentence", sa.Text(), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("new", "learning", "known", "mastered", name="vocabularystatus"),
+            pgEnum(
+                "new", "learning", "known", "mastered",
+                name="vocabularystatus", create_type=False,
+            ),
             server_default="new",
             nullable=False,
         ),
@@ -206,11 +236,12 @@ def upgrade() -> None:
         sa.Column("vocabulary_item_id", sa.Uuid(), nullable=False),
         sa.Column(
             "source_type",
-            sa.Enum(
+            pgEnum(
                 "passage",
                 "book_chapter",
                 "conversation",
                 name="sourcetype",
+                create_type=False,
             ),
             nullable=False,
         ),

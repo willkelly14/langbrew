@@ -69,7 +69,7 @@ async def define_word(
     await _resolve_user(db, auth)
 
     result = await vocabulary_service.define_word(
-        redis, body.word, body.language, body.context_sentence
+        redis, body.word, body.language, body.context_sentence, db=db
     )
 
     # Normalise definitions into the response schema

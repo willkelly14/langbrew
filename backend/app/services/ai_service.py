@@ -16,7 +16,7 @@ from app.core.config import settings
 logger = structlog.stdlib.get_logger()
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "moonshotai/mimo-v2-flash"
+DEFAULT_MODEL = "xiaomi/mimo-v2-flash"
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +122,28 @@ Respond ONLY with a valid JSON object (no markdown, no code fences):
 Provide 1-3 definitions. Ensure the JSON is valid and complete."""
 
 
+def build_sense_selection_prompt(
+    word: str,
+    language: str,
+    context_sentence: str,
+    senses: list[dict[str, Any]],
+) -> str:
+    """Minimal prompt to select which dictionary sense applies in context.
+
+    Designed to produce a very short response (just a number).
+    """
+    sense_lines = "\n".join(
+        f"{s.get('sense_id', i)}: {s.get('definition', '')}"
+        for i, s in enumerate(senses)
+    )
+    return (
+        f'Word: "{word}" ({language})\n'
+        f'Sentence: "{context_sentence}"\n'
+        f"Senses:\n{sense_lines}\n"
+        f"Reply with ONLY the sense number that fits."
+    )
+
+
 def _build_translate_prompt(
     text: str,
     source_language: str,
@@ -192,6 +214,41 @@ async def _call_openrouter(
     content = content.strip()
 
     return json.loads(content)
+
+
+async def call_openrouter_raw(
+    prompt: str,
+    *,
+    max_tokens: int = 16,
+    model: str = DEFAULT_MODEL,
+) -> str:
+    """Make a non-streaming call to OpenRouter and return raw text content.
+
+    Unlike ``_call_openrouter`` this does **not** attempt JSON parsing,
+    which is useful for tiny completions (e.g. sense-selection returning
+    just a number).
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{OPENROUTER_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://langbrew.app",
+                "X-Title": "LangBrew",
+            },
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.0,
+                "max_tokens": max_tokens,
+                "stream": False,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    return data["choices"][0]["message"]["content"]
 
 
 async def generate_passage_stream(

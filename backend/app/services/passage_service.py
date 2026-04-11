@@ -13,6 +13,7 @@ from app.models.enums import CEFRLevel, PassageLength, PassageStyle
 from app.models.passage import Passage
 from app.models.passage_vocabulary import PassageVocabulary
 from app.schemas.passage import PassageListItem
+from app.services import dictionary_service
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,18 +64,54 @@ async def create_passage(
     db.add(passage)
     await db.flush()
 
-    # Create vocabulary annotations
+    # Create vocabulary annotations, enriching with dictionary data when available
     for vocab in vocabulary_data:
+        word_text = vocab.get("word", "")
+        definition = vocab.get("definition")
+        translation = vocab.get("translation")
+        phonetic = vocab.get("phonetic")
+        word_type = vocab.get("word_type")
+        example_sentence = vocab.get("example_sentence")
+        dictionary_entry_id = None
+
+        # Attempt dictionary enrichment
+        if word_text:
+            try:
+                entry = await dictionary_service.lookup_word(
+                    db, word_text, language
+                )
+                if entry is not None:
+                    dictionary_entry_id = entry.id
+                    # Prefer dictionary values over AI-generated ones
+                    if entry.phonetic:
+                        phonetic = entry.phonetic
+                    if entry.word_type:
+                        word_type = entry.word_type
+                    senses = entry.senses or []
+                    if senses:
+                        first = senses[0]
+                        if first.get("definition"):
+                            definition = first["definition"]
+                        if first.get("translation"):
+                            translation = first["translation"]
+            except Exception:
+                logger.debug(
+                    "passage_vocab_dictionary_miss",
+                    word=word_text,
+                    language=language,
+                )
+
         annotation = PassageVocabulary(
             passage_id=passage.id,
-            word=vocab.get("word", ""),
+            word=word_text,
             start_index=vocab.get("start_index", 0),
             end_index=vocab.get("end_index", 0),
-            definition=vocab.get("definition"),
-            translation=vocab.get("translation"),
-            phonetic=vocab.get("phonetic"),
-            word_type=vocab.get("word_type"),
-            example_sentence=vocab.get("example_sentence"),
+            definition=definition,
+            translation=translation,
+            phonetic=phonetic,
+            word_type=word_type,
+            example_sentence=example_sentence,
+            dictionary_entry_id=dictionary_entry_id,
         )
         db.add(annotation)
 

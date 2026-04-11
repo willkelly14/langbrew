@@ -14,6 +14,7 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 from app.models.enums import SourceType, VocabularyStatus, VocabularyType
 
 if TYPE_CHECKING:
+    from app.models.dictionary import DictionaryEntry
     from app.models.user import User
     from app.models.user_language import UserLanguage
 
@@ -77,10 +78,17 @@ class VocabularyItem(Base, UUIDMixin, TimestampMixin):
     times_reviewed: Mapped[int] = mapped_column(default=0, server_default="0")
     times_correct: Mapped[int] = mapped_column(default=0, server_default="0")
     last_reviewed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    dictionary_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("dictionary_entries.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
     user: Mapped[User] = relationship("User", lazy="selectin")
     user_language: Mapped[UserLanguage] = relationship("UserLanguage", lazy="selectin")
+    dictionary_entry: Mapped[DictionaryEntry | None] = relationship(
+        "DictionaryEntry", lazy="selectin"
+    )
     encounters: Mapped[list[VocabularyEncounter]] = relationship(
         "VocabularyEncounter",
         back_populates="vocabulary_item",

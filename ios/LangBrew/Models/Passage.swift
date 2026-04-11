@@ -273,6 +273,7 @@ struct DefineResponse: Codable, Sendable {
     let wordType: String?
     let definitions: [WordDefinition]
     let exampleSentence: String?
+    let source: String? // "dictionary" or "ai"
 }
 
 // MARK: - Translate Request / Response

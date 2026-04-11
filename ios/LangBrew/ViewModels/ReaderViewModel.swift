@@ -448,7 +448,7 @@ final class ReaderViewModel {
                 endIndex: word.count,
                 isHighlighted: false,
                 definition: response.definitions.first?.definition,
-                translation: nil,
+                translation: response.definitions.first?.meaning,
                 phonetic: response.phonetic,
                 wordType: response.wordType,
                 exampleSentence: response.exampleSentence,
@@ -463,7 +463,7 @@ final class ReaderViewModel {
                 usageNotes: nil
             )
         } catch {
-            // Fall back to mock lookup on API failure.
+            print("[ReaderVM] defineWord failed for '\(word)': \(error)")
             return createMockLookup(for: word)
         }
     }
@@ -485,7 +485,7 @@ final class ReaderViewModel {
                 context: nil
             )
         } catch {
-            // Fall back to mock translations on API failure.
+            print("[ReaderVM] phraseTranslation failed for '\(phrase)': \(error)")
             phraseTranslation = MockData.samplePhraseTranslations[phrase.lowercased()]
                 ?? PhraseTranslation(
                     phrase: phrase,
@@ -542,6 +542,7 @@ final class ReaderViewModel {
             let response = try await passageService.translatePhrase(request)
             sentenceTranslation = response.translation
         } catch {
+            print("[ReaderVM] sentenceTranslation failed: \(error)")
             sentenceTranslation = "[Translation unavailable]"
         }
         isLoadingSentenceTranslation = false

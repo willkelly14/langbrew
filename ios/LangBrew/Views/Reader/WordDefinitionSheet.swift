@@ -9,16 +9,21 @@ struct WordDefinitionSheet: View {
     @Bindable var viewModel: ReaderViewModel
     var onDismiss: (() -> Void)?
 
+    /// The word to display — available immediately even while loading.
+    private var displayWord: String {
+        viewModel.selectedVocab?.word ?? viewModel.selectedWord ?? ""
+    }
+
     var body: some View {
         LBBottomSheet(onDismiss: onDismiss) {
-            if let vocab = viewModel.selectedVocab {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Word
-                    Text(vocab.word)
-                        .font(LBTheme.serifFont(size: 28))
-                        .foregroundStyle(Color.lbBlack)
-                        .padding(.bottom, 4)
+            VStack(alignment: .leading, spacing: 0) {
+                // Word — shown immediately
+                Text(displayWord)
+                    .font(LBTheme.serifFont(size: 28))
+                    .foregroundStyle(Color.lbBlack)
+                    .padding(.bottom, 4)
 
+                if let vocab = viewModel.selectedVocab {
                     // Phonetic
                     if let phonetic = vocab.phonetic {
                         Text(phonetic)
@@ -62,9 +67,9 @@ struct WordDefinitionSheet: View {
                         .background(Color.lbG100)
                         .padding(.bottom, 14)
 
-                    // Definition
-                    if let definition = vocab.definition {
-                        Text(definition)
+                    // English meaning (from translation or definitions[].meaning)
+                    if let meaning = englishMeaning(for: vocab) {
+                        Text(meaning)
                             .font(.system(size: 15))
                             .foregroundStyle(Color.lbNearBlack)
                             .lineSpacing(15 * 0.6)
@@ -80,11 +85,34 @@ struct WordDefinitionSheet: View {
 
                     // Add to Language Bank / Added state
                     addToLanguageBankSection
+                } else if viewModel.isLoadingDefinition {
+                    // Loading spinner below the word, like phrase/sentence popups
+                    Divider()
+                        .background(Color.lbG100)
+                        .padding(.top, 10)
+                        .padding(.bottom, 14)
+
+                    ProgressView()
+                        .tint(Color.lbBlack)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, LBTheme.Spacing.lg)
                 }
-            } else {
-                emptyState
             }
         }
+    }
+
+    // MARK: - English Meaning
+
+    /// Returns the best English meaning: prefers translation, then first definition's meaning,
+    /// then falls back to the definition field itself.
+    private func englishMeaning(for vocab: PassageVocabulary) -> String? {
+        if let translation = vocab.translation, !translation.isEmpty {
+            return translation
+        }
+        if let meaning = vocab.definitions?.first?.meaning, !meaning.isEmpty {
+            return meaning
+        }
+        return vocab.definition
     }
 
     // MARK: - Example Text
@@ -162,19 +190,6 @@ struct WordDefinitionSheet: View {
         .animation(.easeInOut(duration: 0.2), value: viewModel.wordAdditionState)
     }
 
-    // MARK: - Empty State
-
-    private var emptyState: some View {
-        VStack(spacing: LBTheme.Spacing.md) {
-            ProgressView()
-                .tint(Color.lbBlack)
-            Text("Loading definition...")
-                .font(LBTheme.Typography.body)
-                .foregroundStyle(Color.lbG500)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, LBTheme.Spacing.xxl)
-    }
 }
 
 // MARK: - Preview

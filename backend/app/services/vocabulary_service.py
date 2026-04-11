@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.models.vocabulary import VocabularyEncounter, VocabularyItem
-from app.services import ai_service
+from app.services import ai_service, dictionary_service
 
 if TYPE_CHECKING:
     import uuid
@@ -24,6 +24,7 @@ logger = structlog.stdlib.get_logger()
 
 # Redis cache TTLs (seconds)
 _DEFINE_CACHE_TTL = 30 * 24 * 60 * 60  # 30 days
+_DICT_CACHE_TTL = 90 * 24 * 60 * 60  # 90 days (dictionary hits are stable)
 _TRANSLATE_CACHE_TTL = 7 * 24 * 60 * 60  # 7 days
 
 
@@ -52,7 +53,26 @@ async def create_vocabulary_item(
     """Create a vocabulary item with an optional encounter record.
 
     If the word already exists for this user+language, raises ``IntegrityError``.
+    When a matching dictionary entry exists, the item is linked to it and
+    enriched with canonical definitions so that flashcard practice uses
+    consistent data.
     """
+    # Try to link to the canonical dictionary entry
+    dict_entry = await dictionary_service.lookup_word(db, text, language)
+    dict_entry_id = dict_entry.id if dict_entry else None
+
+    # Enrich with dictionary data when available
+    if dict_entry is not None:
+        resp = dictionary_service.entry_to_define_response(dict_entry)
+        if not phonetic and resp.get("phonetic"):
+            phonetic = resp["phonetic"]
+        if not word_type and resp.get("word_type"):
+            word_type = resp["word_type"]
+        if not definitions and resp.get("definitions"):
+            definitions = resp["definitions"]
+        if not example_sentence and resp.get("example_sentence"):
+            example_sentence = resp["example_sentence"]
+
     item = VocabularyItem(
         user_id=user_id,
         user_language_id=user_language_id,
@@ -64,6 +84,7 @@ async def create_vocabulary_item(
         word_type=word_type,
         definitions=definitions,
         example_sentence=example_sentence,
+        dictionary_entry_id=dict_entry_id,
     )
     db.add(item)
 
@@ -131,22 +152,61 @@ async def define_word(
     word: str,
     language: str,
     context_sentence: str | None = None,
+    db: AsyncSession | None = None,
 ) -> dict[str, Any]:
-    """Look up a word definition, using Redis cache when available."""
+    """Look up a word definition using a 3-tier strategy.
+
+    1. **Redis cache** -- instant hit for previously looked-up words.
+    2. **Local dictionary** -- Wiktionary-sourced entries stored in Postgres.
+       If the entry has multiple senses and a context sentence is provided,
+       an LLM micro-call selects the best sense.
+    3. **AI generation** -- falls back to a full LLM definition call.
+
+    Dictionary results are cached with a longer TTL (90 days) since they are
+    stable reference data.
+    """
     cache_key = _define_cache_key(word, language)
 
-    # Check cache
+    # --- Tier 1: Redis cache ---
     cached = await redis.get(cache_key)
     if cached:
         logger.debug("define_cache_hit", word=word, language=language)
         return json.loads(cached)
 
-    # Call AI service
+    # --- Tier 2: Local dictionary ---
+    if db is not None:
+        entry = await dictionary_service.lookup_word(db, word, language)
+        if entry is not None:
+            active_sense_id: int | None = None
+            senses = entry.senses or []
+
+            if len(senses) > 1 and context_sentence:
+                active_sense_id = await dictionary_service.select_sense(
+                    redis, word, language, context_sentence, senses
+                )
+
+            result = dictionary_service.entry_to_define_response(
+                entry, active_sense_id
+            )
+
+            # Cache with a longer TTL for dictionary hits
+            await redis.setex(
+                cache_key, _DICT_CACHE_TTL, json.dumps(result)
+            )
+            logger.info(
+                "define_dictionary_hit",
+                word=word,
+                language=language,
+                sense_id=active_sense_id,
+            )
+            return result
+
+    # --- Tier 3: AI generation fallback ---
     result = await ai_service.define_word(word, language, context_sentence)
 
-    # Cache the result
+    # Cache the AI result with the standard TTL
     await redis.setex(cache_key, _DEFINE_CACHE_TTL, json.dumps(result))
-    logger.info("define_cache_set", word=word, language=language)
+    logger.info("define_ai_fallback", word=word, language=language)
 
     return result
 
