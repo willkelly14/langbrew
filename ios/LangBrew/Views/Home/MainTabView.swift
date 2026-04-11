@@ -8,6 +8,7 @@ struct MainTabView: View {
     @State private var selectedTab: LBTab = .home
     @State private var hideTabBar: Bool = false
     @State private var libraryViewModel = LibraryViewModel()
+    @State private var talkViewModel = TalkViewModel()
     @State private var flashcardViewModel = FlashcardViewModel()
 
     var body: some View {
@@ -22,7 +23,7 @@ struct MainTabView: View {
                 case .library:
                     LibraryView(viewModel: libraryViewModel)
                 case .talk:
-                    PlaceholderTabView(title: "Talk", icon: "bubble.left.and.bubble.right", subtitle: "AI conversation partners coming soon.")
+                    TalkView(viewModel: talkViewModel)
                 case .flashcards:
                     NavigationStack {
                         FlashcardHubView(viewModel: flashcardViewModel)
@@ -69,10 +70,12 @@ struct MainTabView: View {
             if let lang = coordinator.currentUser?.activeLanguage {
                 let flag = FlagMapper.flag(for: lang.targetLanguage)
                 libraryViewModel.activeFlag = flag
+                talkViewModel.activeFlag = flag
                 flashcardViewModel.activeFlag = flag
             } else if let code = coordinator.onboardingState.selectedLanguage {
                 let flag = FlagMapper.flag(for: code)
                 libraryViewModel.activeFlag = flag
+                talkViewModel.activeFlag = flag
                 flashcardViewModel.activeFlag = flag
             }
         }
@@ -80,6 +83,7 @@ struct MainTabView: View {
             if let lang = newLang {
                 let flag = FlagMapper.flag(for: lang)
                 libraryViewModel.activeFlag = flag
+                talkViewModel.activeFlag = flag
                 flashcardViewModel.activeFlag = flag
             }
         }

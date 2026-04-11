@@ -63,7 +63,7 @@ struct PassageLoadingView: View {
 
 /// Animates words floating upward like steam, fading in and out.
 /// Words use Instrument Serif italic, color g300.
-private struct FloatingWordsView: View {
+struct FloatingWordsView: View {
     @State private var particles: [FloatingWord] = []
 
     private let words = MockPassageData.floatingWords
@@ -137,7 +137,7 @@ private struct FloatingWordsView: View {
 // MARK: - Floating Word Model
 
 /// Represents a single floating word particle in the loading animation.
-private struct FloatingWord: Identifiable {
+struct FloatingWord: Identifiable {
     let id = UUID()
     let text: String
     let fontSize: CGFloat
@@ -150,7 +150,7 @@ private struct FloatingWord: Identifiable {
 // MARK: - Bouncing Dots
 
 /// Three dots that bounce sequentially below the status message.
-private struct BouncingDots: View {
+struct BouncingDots: View {
     @State private var animating = false
 
     var body: some View {

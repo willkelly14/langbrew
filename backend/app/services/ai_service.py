@@ -25,7 +25,7 @@ class AIServiceError(Exception):
 
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "xiaomi/mimo-v2-flash"
+DEFAULT_MODEL = "google/gemma-4-31b-it"
 FAST_MODEL = "google/gemma-4-31b-it"
 
 
@@ -438,4 +438,126 @@ async def translate_phrase(
 ) -> dict[str, Any]:
     """Translate a phrase or sentence via the LLM."""
     prompt = _build_translate_prompt(text, source_language, target_language, context)
+    return await _call_openrouter(prompt, model=DEFAULT_MODEL)
+
+
+# ---------------------------------------------------------------------------
+# Chat / Talk
+# ---------------------------------------------------------------------------
+
+
+def _build_chat_system_prompt(
+    partner_name: str,
+    partner_personality: str,
+    system_prompt_template: str,
+    language: str,
+    cefr_level: str,
+) -> str:
+    """Build system prompt for conversation partner."""
+    return f"""{system_prompt_template}
+
+Your name is {partner_name}. Your personality: {partner_personality}.
+Conversation language: {language}
+Student's CEFR level: {cefr_level}
+
+Guidelines:
+- Respond naturally in {language} at the {cefr_level} level
+- Keep responses concise (2-4 sentences typically)
+- Gently introduce new vocabulary appropriate for the level
+- If the student makes errors, continue naturally (don't correct inline)
+- Be encouraging and conversational
+- Stay in character as {partner_name}"""
+
+
+async def stream_chat_response(
+    system_prompt: str,
+    messages: list[dict[str, str]],
+) -> AsyncGenerator[str, None]:
+    """Stream chat response tokens from MiMo v2 Flash via OpenRouter."""
+    # Build the messages list with system prompt
+    api_messages: list[dict[str, str]] = [
+        {"role": "system", "content": system_prompt},
+    ]
+    api_messages.extend(messages)
+
+    async with (
+        httpx.AsyncClient(timeout=60.0) as client,
+        client.stream(
+            "POST",
+            f"{OPENROUTER_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://langbrew.app",
+                "X-Title": "LangBrew",
+            },
+            json={
+                "model": DEFAULT_MODEL,
+                "messages": api_messages,
+                "stream": True,
+                "max_tokens": 500,
+                "temperature": 0.8,
+            },
+        ) as response,
+    ):
+        response.raise_for_status()
+        async for line in response.aiter_lines():
+            if not line.startswith("data: "):
+                continue
+            data = line[6:]
+            if data.strip() == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+                delta = chunk["choices"][0].get("delta", {})
+                content = delta.get("content", "")
+                if content:
+                    yield content
+            except (json.JSONDecodeError, KeyError, IndexError):
+                logger.warning("chat_stream_parse_error", line=line)
+                continue
+
+
+async def generate_chat_feedback(
+    transcript: str,
+    language: str,
+    cefr_level: str,
+) -> dict[str, Any]:
+    """Generate structured feedback for a completed conversation."""
+    prompt = f"""Analyze this language learning conversation and \
+provide detailed feedback.
+
+The student is learning {language} at CEFR level {cefr_level}.
+
+Transcript:
+{transcript}
+
+Respond with ONLY valid JSON in this exact format:
+{{
+    "overall_score": <int 0-100>,
+    "grammar_score": <int 0-100>,
+    "vocabulary_score": <int 0-100>,
+    "fluency_score": <int 0-100>,
+    "confidence_score": <int 0-100>,
+    "summary": "<2-3 sentence overall assessment>",
+    "strengths": {{
+        "label": "Strength",
+        "text": "<specific praise with examples from the conversation>"
+    }},
+    "tips": {{
+        "label": "Try this",
+        "text": "<specific actionable advice for improvement>"
+    }},
+    "corrections": [
+        {{
+            "original": "<what the student said>",
+            "corrected": "<correct version>",
+            "explanation": "<brief grammar/usage explanation>"
+        }}
+    ]
+}}
+
+If the student made no errors, return an empty corrections array.
+Be encouraging but honest. Reference specific words/phrases from the conversation."""
+
     return await _call_openrouter(prompt, model=DEFAULT_MODEL)

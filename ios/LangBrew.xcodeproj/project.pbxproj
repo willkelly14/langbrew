@@ -92,6 +92,15 @@
 		EE1122334455667788990044 /* CustomStudySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1122334455667788990044 /* CustomStudySheet.swift */; };
 		GG1122334455667788990011 /* FlashcardService.swift in Sources */ = {isa = PBXBuildFile; fileRef = GG1122334455667788990022 /* FlashcardService.swift */; };
 		GG1122334455667788990033 /* FlashcardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = GG1122334455667788990044 /* FlashcardModels.swift */; };
+		FA4A790E8AB3B3C9FD1AC643 /* Talk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7E42E439ED3B061187D38D /* Talk.swift */; };
+		41DD09557C4E5FDB49657D70 /* TalkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E765541715F08B4C44C6E78 /* TalkService.swift */; };
+		4337BB7DA2EACF7485E06DFD /* TalkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 103D3E1E14EE7872C79F8ABC /* TalkViewModel.swift */; };
+		4EE975F89DC748FE0155DDF5 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C8AA551A225719DFCEE19B1 /* ChatViewModel.swift */; };
+		1617C2CB36A24CD5D8F9F99F /* FeedbackViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 980415F0CC62D0F48517000B /* FeedbackViewModel.swift */; };
+		F8F28C697A541A7D350C8CED /* TalkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9BC38858345D04D3497DA42 /* TalkView.swift */; };
+		EB1515FC43CE7CBC9D58845B /* NewConversationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD3905CD3F22D4EECD5946B /* NewConversationSheet.swift */; };
+		802DAE51AD6339ABDA84120E /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255E08B460E3498DB06F4BB9 /* ChatView.swift */; };
+		A5C3FC4757E997DBAF670F73 /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C091CDC367451680AFF89382 /* FeedbackView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -183,6 +192,15 @@
 		DD1122334455667788990044 /* CustomStudySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomStudySheet.swift; sourceTree = "<group>"; };
 		GG1122334455667788990022 /* FlashcardService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardService.swift; sourceTree = "<group>"; };
 		GG1122334455667788990044 /* FlashcardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardModels.swift; sourceTree = "<group>"; };
+		4B7E42E439ED3B061187D38D /* Talk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Talk.swift; sourceTree = "<group>"; };
+		9E765541715F08B4C44C6E78 /* TalkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkService.swift; sourceTree = "<group>"; };
+		103D3E1E14EE7872C79F8ABC /* TalkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkViewModel.swift; sourceTree = "<group>"; };
+		6C8AA551A225719DFCEE19B1 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		980415F0CC62D0F48517000B /* FeedbackViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackViewModel.swift; sourceTree = "<group>"; };
+		F9BC38858345D04D3497DA42 /* TalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkView.swift; sourceTree = "<group>"; };
+		1DD3905CD3F22D4EECD5946B /* NewConversationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewConversationSheet.swift; sourceTree = "<group>"; };
+		255E08B460E3498DB06F4BB9 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		C091CDC367451680AFF89382 /* FeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -218,6 +236,7 @@
 				AA11BB22CC33DD44EE55FF66 /* Library */,
 				D6EDB6F23205ECC22E8475F9 /* Onboarding */,
 				BB22CC33DD44EE55FF667788 /* Reader */,
+				E86BE7BFC21A762DF097D953 /* Talk */,
 				9269A50D1D19500F54E8B8D0 /* Settings */,
 			);
 			path = Views;
@@ -300,6 +319,9 @@
 				81A9C0819A85628F37216659 /* OnboardingState.swift */,
 				CD34EF5678901234ABCD5678 /* ReaderViewModel.swift */,
 				1D535D50B4747BF5B87CFE1B /* SettingsViewModel.swift */,
+				6C8AA551A225719DFCEE19B1 /* ChatViewModel.swift */,
+				980415F0CC62D0F48517000B /* FeedbackViewModel.swift */,
+				103D3E1E14EE7872C79F8ABC /* TalkViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -366,6 +388,7 @@
 				0F6EE1D6BC2AC324DE2B15BD /* PersistenceController.swift */,
 				A8366FE258CE716ADCFD106E /* SupabaseConfig.swift */,
 				A76F946A969088EB40D9269F /* UserService.swift */,
+				9E765541715F08B4C44C6E78 /* TalkService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -392,6 +415,7 @@
 				A1B2C3D4E5F67890ABCDEF01 /* Passage.swift */,
 				3895A5817462C6BAB230BE27 /* User.swift */,
 				385D5E7426942CC3611C875C /* UserRequests.swift */,
+				4B7E42E439ED3B061187D38D /* Talk.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -426,6 +450,17 @@
 				3C58C3C9113A3E170A4AFE75 /* MainTabView.swift */,
 			);
 			path = Home;
+			sourceTree = "<group>";
+		};
+		E86BE7BFC21A762DF097D953 /* Talk */ = {
+			isa = PBXGroup;
+			children = (
+				255E08B460E3498DB06F4BB9 /* ChatView.swift */,
+				C091CDC367451680AFF89382 /* FeedbackView.swift */,
+				1DD3905CD3F22D4EECD5946B /* NewConversationSheet.swift */,
+				F9BC38858345D04D3497DA42 /* TalkView.swift */,
+			);
+			path = Talk;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -581,6 +616,15 @@
 				43658709DCFE21BA43658709 /* TextOptionsSheet.swift in Sources */,
 				F5CA03D6E7B8419C2A5F13B7 /* UpgradeSheet.swift in Sources */,
 				65870921FEBA43DC65870921 /* WordDefinitionSheet.swift in Sources */,
+				FA4A790E8AB3B3C9FD1AC643 /* Talk.swift in Sources */,
+				41DD09557C4E5FDB49657D70 /* TalkService.swift in Sources */,
+				4337BB7DA2EACF7485E06DFD /* TalkViewModel.swift in Sources */,
+				4EE975F89DC748FE0155DDF5 /* ChatViewModel.swift in Sources */,
+				1617C2CB36A24CD5D8F9F99F /* FeedbackViewModel.swift in Sources */,
+				F8F28C697A541A7D350C8CED /* TalkView.swift in Sources */,
+				EB1515FC43CE7CBC9D58845B /* NewConversationSheet.swift in Sources */,
+				802DAE51AD6339ABDA84120E /* ChatView.swift in Sources */,
+				A5C3FC4757E997DBAF670F73 /* FeedbackView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine
 from app.core.redis import redis_client
-from app.routers import flashcards, health, home, me, passages, vocabulary
+from app.routers import flashcards, health, home, me, passages, talk, vocabulary
 
 logger = structlog.stdlib.get_logger()
 
@@ -52,4 +52,5 @@ app.include_router(home.router, prefix=settings.API_V1_PREFIX)
 app.include_router(me.router, prefix=settings.API_V1_PREFIX)
 app.include_router(passages.router, prefix=settings.API_V1_PREFIX)
 app.include_router(vocabulary.router, prefix=settings.API_V1_PREFIX)
+app.include_router(talk.router, prefix=settings.API_V1_PREFIX)
 app.include_router(flashcards.router, prefix=settings.API_V1_PREFIX)

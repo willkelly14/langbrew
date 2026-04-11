@@ -109,3 +109,25 @@ class CardTypeFilter(enum.StrEnum):
     WORDS = "words"
     PHRASES = "phrases"
     SENTENCES = "sentences"
+
+
+class ConversationStatus(enum.StrEnum):
+    """Status of a conversation."""
+
+    ACTIVE = "active"
+    ENDED = "ended"
+    ABANDONED = "abandoned"
+
+
+class MessageRole(enum.StrEnum):
+    """Role of a message sender."""
+
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class MessageContentType(enum.StrEnum):
+    """Content type of a message."""
+
+    TEXT = "text"
+    AUDIO = "audio"

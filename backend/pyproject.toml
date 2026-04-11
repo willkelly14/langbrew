@@ -27,6 +27,8 @@ ignore = [
 "app/models/*.py" = ["TCH001", "TCH002", "TCH003"]
 # Pydantic schemas need runtime type access for validation
 "app/schemas/*.py" = ["TCH001", "TCH002", "TCH003"]
+# Alembic migrations contain long raw SQL seed data
+"alembic/versions/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

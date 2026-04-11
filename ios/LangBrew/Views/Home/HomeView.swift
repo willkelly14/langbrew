@@ -159,8 +159,7 @@ struct HomeView: View {
         HStack(spacing: LBTheme.Spacing.md) {
             // Talk button
             Button {
-                comingSoonFeature = "Chat with Mia"
-                showComingSoonAlert = true
+                selectedTab = .talk
             } label: {
                 quickActionContent(
                     icon: "bubble.left.and.bubble.right",
