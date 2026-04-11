@@ -18,9 +18,6 @@ final class ChatViewModel {
     // MARK: - Streaming State
 
     var isStreaming: Bool = false
-    var isWaitingForFirstToken: Bool = false
-    /// Tracks accumulated text during streaming — drives view updates.
-    var streamingText: String = ""
 
     // MARK: - Transcript Toggle
 
@@ -93,6 +90,7 @@ final class ChatViewModel {
     // MARK: - Send Message (SSE Streaming)
 
     /// Sends the user's message and streams the AI response via SSE.
+    /// Tokens are accumulated silently — the complete response appears all at once.
     func sendMessage() async {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isStreaming else { return }
@@ -100,7 +98,6 @@ final class ChatViewModel {
         // Clear input and begin streaming
         inputText = ""
         isStreaming = true
-        isWaitingForFirstToken = true
         errorMessage = nil
 
         // Add user message optimistically
@@ -115,67 +112,33 @@ final class ChatViewModel {
         )
         messages.append(userMessage)
 
-        // Add empty AI placeholder
-        let placeholderId = UUID().uuidString
-        let placeholder = ChatMessage(
-            id: placeholderId,
-            conversationId: conversationId,
-            sequenceNumber: messages.count + 1,
-            role: "assistant",
-            contentType: "text",
-            textContent: "",
-            createdAt: ISO8601DateFormatter().string(from: Date())
-        )
-        messages.append(placeholder)
-
-        // Stream AI response
-        var accumulatedText = ""
-        streamingText = ""
+        // Stream AI response — consume the SSE stream, then reload from server
         let stream = await talkService.sendMessage(
             conversationId: conversationId,
             text: trimmed
         )
 
         do {
-            print("[ChatVM] Starting SSE stream consumption")
             for try await sseEvent in stream {
-                let eventType = sseEvent.event ?? ""
-                print("[ChatVM] SSE event: type='\(eventType)' data='\(sseEvent.data.prefix(50))'")
-
-                if eventType == "done" {
-                    print("[ChatVM] Done event received")
-                    break
-                }
-
-                if eventType == "error" {
-                    errorMessage = sseEvent.data
-                    showErrorAlert = true
-                    print("[ChatVM] Error event received")
-                    break
-                }
-
-                // Accumulate token data (both "token" events and untyped events)
-                let tokenData = sseEvent.data
-                if !tokenData.isEmpty {
-                    if isWaitingForFirstToken {
-                        isWaitingForFirstToken = false
+                if sseEvent.event == "done" || sseEvent.event == "error" {
+                    if sseEvent.event == "error" {
+                        errorMessage = sseEvent.data
+                        showErrorAlert = true
                     }
-                    accumulatedText += tokenData
-                    streamingText = accumulatedText
-                    updatePlaceholder(id: placeholderId, text: accumulatedText)
-                    print("[ChatVM] Updated placeholder, total length: \(accumulatedText.count)")
+                    break
                 }
             }
-            print("[ChatVM] Stream ended, accumulated \(accumulatedText.count) chars")
         } catch {
             errorMessage = error.localizedDescription
             showErrorAlert = true
-            print("[ChatVM] SSE stream error: \(error)")
         }
 
-        isWaitingForFirstToken = false
+        // Reload messages from server — the backend has saved both messages by now
+        if let detail = try? await talkService.getConversation(id: conversationId) {
+            messages = detail.messages
+        }
+
         isStreaming = false
-        streamingText = ""
     }
 
     // MARK: - Request Feedback
@@ -196,21 +159,4 @@ final class ChatViewModel {
         }
     }
 
-    // MARK: - Private Helpers
-
-    /// Replaces the AI placeholder message with updated text content.
-    /// ChatMessage is a struct, so we find and replace the entire value.
-    private func updatePlaceholder(id: String, text: String) {
-        guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
-        let existing = messages[index]
-        messages[index] = ChatMessage(
-            id: existing.id,
-            conversationId: existing.conversationId,
-            sequenceNumber: existing.sequenceNumber,
-            role: existing.role,
-            contentType: existing.contentType,
-            textContent: text,
-            createdAt: existing.createdAt
-        )
-    }
 }

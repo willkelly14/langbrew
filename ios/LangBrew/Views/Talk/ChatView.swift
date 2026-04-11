@@ -29,10 +29,7 @@ struct ChatView: View {
                 .onChange(of: viewModel.messages.count) {
                     scrollToBottom(proxy: proxy)
                 }
-                .onChange(of: viewModel.streamingText) {
-                    scrollToBottom(proxy: proxy)
-                }
-                .onChange(of: viewModel.isWaitingForFirstToken) {
+                .onChange(of: viewModel.isStreaming) {
                     scrollToBottom(proxy: proxy)
                 }
             }
@@ -155,30 +152,14 @@ struct ChatView: View {
 
     // MARK: - Messages Content
 
-    /// Renders all messages. For the streaming AI message, uses `streamingText`
-    /// directly rather than relying on array mutation to trigger re-renders.
     @ViewBuilder
     private var messagesContent: some View {
-        let msgs = viewModel.messages
-        let streaming = viewModel.isStreaming
-        let waitingFirst = viewModel.isWaitingForFirstToken
-        let liveText = viewModel.streamingText
+        ForEach(viewModel.messages) { message in
+            chatBubble(for: message)
+        }
 
-        ForEach(0..<msgs.count, id: \.self) { i in
-            let message = msgs[i]
-            let isStreamingPlaceholder = streaming && i == msgs.count - 1 && message.isAssistant
-
-            if isStreamingPlaceholder {
-                if waitingFirst {
-                    // Show typing dots while waiting for first token
-                    typingIndicator
-                } else if !liveText.isEmpty {
-                    // Show AI bubble with live-streamed text
-                    aiBubble(text: liveText)
-                }
-            } else if !(message.isAssistant && message.displayText.isEmpty) {
-                chatBubble(for: message)
-            }
+        if viewModel.isStreaming {
+            typingIndicator
         }
     }
 
@@ -246,67 +227,20 @@ struct ChatView: View {
         }
     }
 
-    // MARK: - AI Bubble (for streaming text)
-
-    private func aiBubble(text: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.partnerName)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.lbG400)
-
-                    Text(text)
-                        .font(.system(size: 15))
-                        .lineSpacing(4)
-                        .foregroundStyle(Color.lbBlack)
-                }
-                .padding(.vertical, 14)
-                .padding(.horizontal, 16)
-                .background(Color.white)
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 12,
-                        bottomLeadingRadius: 6,
-                        bottomTrailingRadius: 12,
-                        topTrailingRadius: 12
-                    )
-                )
-
-                Spacer(minLength: 50)
-            }
-        }
-    }
-
     // MARK: - Typing Indicator
 
     private var typingIndicator: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(viewModel.partnerName)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.lbG400)
-
-                HStack(spacing: 5) {
-                    ForEach(0..<3, id: \.self) { index in
-                        TypingDot(delay: Double(index) * 0.15)
-                    }
+            HStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { index in
+                    TypingDot(delay: Double(index) * 0.15)
                 }
-                .frame(height: 10)
             }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 16)
-            .background(Color.white)
-            .clipShape(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 12,
-                    bottomLeadingRadius: 6,
-                    bottomTrailingRadius: 12,
-                    topTrailingRadius: 12
-                )
-            )
+            .frame(height: 10)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
 
-            Spacer(minLength: 50)
+            Spacer()
         }
     }
 
