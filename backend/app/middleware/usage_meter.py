@@ -146,3 +146,50 @@ async def increment_translations_used(
     meter = await get_or_create_usage_meter(db, user_id, tier)
     meter.translations_used += 1
     await db.flush()
+
+
+async def check_talk_usage(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthenticatedUser = Depends(get_current_user),
+) -> uuid.UUID:
+    """Verify the user has not exceeded their monthly talk seconds limit.
+
+    Returns the ``user_id`` for downstream use.  Raises HTTP 402 if the limit
+    is exceeded.
+    """
+    user = await _resolve_user(db, auth)
+    meter = await get_or_create_usage_meter(db, user.id, user.subscription_tier)
+    limit = _get_limit(user.subscription_tier, "talk_seconds")
+
+    if meter.talk_seconds >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "error": {
+                    "code": "USAGE_LIMIT_EXCEEDED",
+                    "message": (
+                        "Monthly talk time limit reached. "
+                        "Upgrade to Fluency for 30 hours/month."
+                    ),
+                    "details": {
+                        "limit": limit,
+                        "used": meter.talk_seconds,
+                        "resource": "talk_seconds",
+                    },
+                }
+            },
+        )
+
+    return user.id
+
+
+async def increment_talk_seconds(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    tier: SubscriptionTier,
+    seconds: int,
+) -> None:
+    """Increment the talk seconds counter for the current period."""
+    meter = await get_or_create_usage_meter(db, user_id, tier)
+    meter.talk_seconds += seconds
+    await db.flush()

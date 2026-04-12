@@ -60,11 +60,35 @@ struct ChatMessage: Codable, Sendable, Identifiable {
     let role: String // "user" or "assistant"
     let contentType: String // "text" or "audio"
     let textContent: String?
+    let audioTranscription: String?
+    let audioDurationSeconds: Int?
     let createdAt: String
+
+    init(
+        id: String,
+        conversationId: String,
+        sequenceNumber: Int,
+        role: String,
+        contentType: String,
+        textContent: String?,
+        audioTranscription: String? = nil,
+        audioDurationSeconds: Int? = nil,
+        createdAt: String
+    ) {
+        self.id = id
+        self.conversationId = conversationId
+        self.sequenceNumber = sequenceNumber
+        self.role = role
+        self.contentType = contentType
+        self.textContent = textContent
+        self.audioTranscription = audioTranscription
+        self.audioDurationSeconds = audioDurationSeconds
+        self.createdAt = createdAt
+    }
 
     var isUser: Bool { role == "user" }
     var isAssistant: Bool { role == "assistant" }
-    var displayText: String { textContent ?? "" }
+    var displayText: String { textContent ?? audioTranscription ?? "" }
 }
 
 // MARK: - Conversation Feedback
@@ -151,4 +175,28 @@ struct CreateConversationRequest: Codable, Sendable {
 /// Request body for `POST /v1/talk/conversations/:id/messages`.
 struct SendMessageRequest: Codable, Sendable {
     let textContent: String
+    let contentType: String?
+    let audioTranscription: String?
+    let audioDurationSeconds: Int?
+
+    init(
+        textContent: String,
+        contentType: String? = nil,
+        audioTranscription: String? = nil,
+        audioDurationSeconds: Int? = nil
+    ) {
+        self.textContent = textContent
+        self.contentType = contentType
+        self.audioTranscription = audioTranscription
+        self.audioDurationSeconds = audioDurationSeconds
+    }
+}
+
+// MARK: - Transcription Response
+
+/// Response from `POST /v1/talk/transcribe` for speech-to-text.
+struct TranscriptionResponse: Codable, Sendable {
+    let text: String
+    let confidence: Double?
+    let language: String?
 }

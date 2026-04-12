@@ -24,6 +24,9 @@ class SendMessageRequest(BaseModel):
     """Request body for POST /v1/talk/conversations/:id/messages."""
 
     text_content: str = Field(max_length=5000)
+    content_type: str = Field(default="text", pattern="^(text|audio)$")
+    audio_transcription: str | None = Field(default=None, max_length=5000)
+    audio_duration_seconds: int | None = Field(default=None, ge=0, le=300)
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +56,8 @@ class MessageResponse(BaseModel):
     role: str
     content_type: str
     text_content: str | None
+    audio_transcription: str | None = None
+    audio_duration_seconds: int | None = None
     created_at: datetime
 
 
@@ -101,6 +106,15 @@ class FeedbackResponse(BaseModel):
     tips: dict | None
     corrections: list | None
     created_at: datetime
+
+
+class TranscribeResponse(BaseModel):
+    """Response from the audio transcription endpoint."""
+
+    text: str
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    language: str | None = None
+    duration_seconds: float | None = None
 
 
 class PaginatedConversationsResponse(BaseModel):

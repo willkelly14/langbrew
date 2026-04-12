@@ -49,6 +49,16 @@ struct ChatView: View {
         } message: {
             Text(viewModel.errorMessage ?? "Something went wrong.")
         }
+        .alert("Microphone Access Required", isPresented: $viewModel.showMicPermissionDenied) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("LangBrew needs microphone access so you can practice speaking. Please enable it in Settings.")
+        }
         .task {
             viewModel.configure(conversation: conversation)
             await viewModel.loadMessages()
@@ -247,38 +257,94 @@ struct ChatView: View {
     // MARK: - Input Bar
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("Type or tap mic...", text: $viewModel.inputText)
-                .font(.system(size: 14))
-                .padding(.horizontal, 16)
-                .frame(height: 44)
-                .background(Color.lbG50)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .onSubmit {
-                    if viewModel.canSend {
-                        Task { await viewModel.sendMessage() }
+        VStack(spacing: 8) {
+            // Recording indicator
+            if viewModel.isRecording {
+                VoiceRecordingIndicator(
+                    duration: viewModel.recordingDuration,
+                    amplitude: viewModel.currentAmplitude
+                )
+                .padding(.horizontal, 20)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            // Transcribing indicator
+            if viewModel.isTranscribing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Transcribing...")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.lbG400)
+                }
+                .padding(.horizontal, 20)
+                .transition(.opacity)
+            }
+
+            HStack(spacing: 10) {
+                TextField("Type or tap mic...", text: $viewModel.inputText)
+                    .font(.system(size: 14))
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .background(Color.lbG50)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .disabled(viewModel.isRecording || viewModel.isTranscribing)
+                    .onSubmit {
+                        if viewModel.canSend {
+                            Task { await viewModel.sendMessage() }
+                        }
+                    }
+
+                Button {
+                    Task {
+                        if viewModel.canSend {
+                            await viewModel.sendMessage()
+                        } else {
+                            await viewModel.toggleRecording()
+                        }
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(inputButtonColor)
+                            .frame(width: 44, height: 44)
+
+                        Image(systemName: inputButtonIcon)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.white)
                     }
                 }
-
-            Button {
-                Task { await viewModel.sendMessage() }
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.lbBlack)
-                        .frame(width: 44, height: 44)
-
-                    Image(systemName: viewModel.canSend ? "arrow.up" : "mic.fill")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.white)
-                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isTranscribing || viewModel.isStreaming)
             }
-            .buttonStyle(.plain)
-            .disabled(!viewModel.canSend)
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal, 20)
         .padding(.vertical, 10)
         .padding(.bottom, 18)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isRecording)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isTranscribing)
+    }
+
+    // MARK: - Input Button Helpers
+
+    /// The icon shown on the action button depending on current state.
+    private var inputButtonIcon: String {
+        if viewModel.isRecording {
+            return "stop.fill"
+        } else if viewModel.canSend {
+            return "arrow.up"
+        } else {
+            return "mic.fill"
+        }
+    }
+
+    /// The color for the action button depending on current state.
+    private var inputButtonColor: Color {
+        if viewModel.isRecording {
+            return .red
+        } else {
+            return .lbBlack
+        }
     }
 }
 

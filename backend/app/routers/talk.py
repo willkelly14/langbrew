@@ -7,12 +7,13 @@ import uuid  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
 from sse_starlette.sse import EventSourceResponse
 
 from app.core.auth import AuthenticatedUser, get_current_user
 from app.core.database import get_db
 from app.middleware.rate_limit import rate_limit_ai, rate_limit_default
+from app.middleware.usage_meter import check_talk_usage, increment_talk_seconds
 from app.schemas.talk import (
     ConversationDetailResponse,
     ConversationResponse,
@@ -22,8 +23,10 @@ from app.schemas.talk import (
     PaginatedConversationsResponse,
     PartnerResponse,
     SendMessageRequest,
+    TranscribeResponse,
 )
 from app.services import ai_service, talk_service
+from app.services.transcription_service import TranscriptionError, transcribe_audio
 from app.services.user_service import get_or_create_user
 
 if TYPE_CHECKING:
@@ -46,6 +49,117 @@ router = APIRouter(prefix="/talk", tags=["talk"])
 async def _resolve_user(db: AsyncSession, auth: AuthenticatedUser) -> User:
     """Look up (or create) the DB user for the authenticated JWT subject."""
     return await get_or_create_user(db, auth.sub, auth.email)
+
+
+# ---------------------------------------------------------------------------
+# POST /v1/talk/transcribe — Transcribe audio
+# ---------------------------------------------------------------------------
+
+_ALLOWED_AUDIO_TYPES = {
+    "audio/wav",
+    "audio/x-wav",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/webm",
+    "audio/ogg",
+    "audio/flac",
+    "audio/x-flac",
+}
+
+_MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@router.post("/transcribe", response_model=TranscribeResponse)
+async def transcribe_audio_endpoint(
+    file: UploadFile,
+    language: str | None = Form(default=None, max_length=10),
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(check_talk_usage),
+    _rate: None = Depends(rate_limit_ai),
+) -> TranscribeResponse:
+    """Transcribe an audio file to text using Mistral STT."""
+    # Validate content type
+    content_type = file.content_type or ""
+    if content_type not in _ALLOWED_AUDIO_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": {
+                    "code": "INVALID_AUDIO_FORMAT",
+                    "message": (
+                        "Unsupported audio format. "
+                        "Accepted: wav, m4a, mp3, webm, ogg, flac."
+                    ),
+                    "details": {"content_type": content_type},
+                }
+            },
+        )
+
+    # Read and validate file size
+    audio_data = await file.read()
+    if len(audio_data) > _MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "error": {
+                    "code": "FILE_TOO_LARGE",
+                    "message": "Audio file must be 10 MB or smaller.",
+                    "details": {
+                        "max_bytes": _MAX_AUDIO_BYTES,
+                        "received_bytes": len(audio_data),
+                    },
+                }
+            },
+        )
+
+    try:
+        result = await transcribe_audio(
+            audio_data,
+            file.filename or "audio.wav",
+            language_hint=language,
+        )
+    except TranscriptionError as exc:
+        logger.error(
+            "transcription_failed",
+            user_id=str(user_id),
+            error=str(exc),
+            details=exc.details,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": {
+                    "code": "TRANSCRIPTION_FAILED",
+                    "message": "Audio transcription service is unavailable.",
+                    "details": {},
+                }
+            },
+        ) from exc
+
+    # Increment talk seconds usage
+    duration_secs = int(result.duration_seconds) if result.duration_seconds else 0
+    if duration_secs > 0:
+        from sqlalchemy import select as sa_select
+
+        from app.models.user import User as UserModel
+
+        user_stmt = sa_select(UserModel).where(UserModel.id == user_id)
+        user_result = await db.execute(user_stmt)
+        user_obj = user_result.scalar_one()
+        await increment_talk_seconds(
+            db, user_id, user_obj.subscription_tier, duration_secs
+        )
+        await db.commit()
+
+    return TranscribeResponse(
+        text=result.text,
+        confidence=result.confidence,
+        language=result.language,
+        duration_seconds=result.duration_seconds,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -100,9 +214,7 @@ async def create_conversation(
     language = body.language or active_lang.target_language
     resolved_cefr = active_lang.speaking_level or active_lang.cefr_level
     cefr_level = (
-        resolved_cefr.value
-        if hasattr(resolved_cefr, "value")
-        else str(resolved_cefr)
+        resolved_cefr.value if hasattr(resolved_cefr, "value") else str(resolved_cefr)
     )
 
     conversation = await talk_service.create_conversation(
@@ -251,6 +363,9 @@ async def send_message(
         conversation_id,
         role="user",
         text_content=body.text_content,
+        content_type=body.content_type,
+        audio_transcription=body.audio_transcription,
+        audio_duration_seconds=body.audio_duration_seconds,
     )
     await db.commit()
 
@@ -360,9 +475,7 @@ async def generate_feedback(
     await talk_service.delete_feedback(db, conversation_id)
 
     try:
-        await talk_service.generate_and_store_feedback(
-            db, conversation_id
-        )
+        await talk_service.generate_and_store_feedback(db, conversation_id)
     except Exception:
         logger.exception(
             "feedback_generation_failed",

@@ -317,6 +317,122 @@ actor APIClient {
         }
     }
 
+    // MARK: - Multipart Upload
+
+    /// Performs a multipart/form-data POST request with a file and optional form fields.
+    /// Used for audio transcription uploads and similar binary data endpoints.
+    func uploadMultipart<T: Decodable & Sendable>(
+        _ path: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        fields: [String: String] = [:],
+        isRetry: Bool = false
+    ) async throws -> T {
+        let url = baseURL.appendingPathComponent(path)
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = HTTPMethod.post.rawValue
+        urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        // Inject JWT from AuthManager
+        do {
+            let token = try await AuthManager.shared.validAccessToken()
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } catch {
+            throw APIError.unauthorized
+        }
+
+        // Build multipart body
+        var body = Data()
+
+        // Add form fields
+        for (key, value) in fields {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+
+        // Add file part
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n".data(using: .utf8)!)
+
+        // Closing boundary
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        urlRequest.httpBody = body
+
+        let data: Data
+        let response: URLResponse
+
+        do {
+            (data, response) = try await session.data(for: urlRequest)
+        } catch {
+            throw APIError.network(underlying: error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.network(underlying: URLError(.badServerResponse))
+        }
+
+        // On 401, refresh token and retry once
+        if httpResponse.statusCode == 401 && !isRetry {
+            do {
+                try await AuthManager.shared.refreshToken()
+                return try await uploadMultipart(
+                    path,
+                    fileData: fileData,
+                    fileName: fileName,
+                    mimeType: mimeType,
+                    fields: fields,
+                    isRetry: true
+                )
+            } catch {
+                throw APIError.unauthorized
+            }
+        }
+
+        // Check for server errors
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 402,
+               let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data),
+               let details = errorResponse.error.details {
+                let resource: String
+                let limit: Int
+                let used: Int
+                if case .string(let r) = details["resource"] { resource = r } else { resource = "unknown" }
+                if case .int(let l) = details["limit"] { limit = l } else { limit = 0 }
+                if case .int(let u) = details["used"] { used = u } else { used = 0 }
+                throw APIError.usageLimitExceeded(resource: resource, limit: limit, used: used)
+            }
+            if let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data) {
+                throw APIError.server(
+                    code: errorResponse.error.code,
+                    message: errorResponse.error.message
+                )
+            }
+            throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
+        }
+
+        if data.isEmpty || httpResponse.statusCode == 204 {
+            if let empty = EmptyResponse() as? T {
+                return empty
+            }
+        }
+
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError.decodingFailed(underlying: error)
+        }
+    }
+
     // MARK: - Core Request
 
     private func request<T: Decodable & Sendable>(

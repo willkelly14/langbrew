@@ -126,4 +126,20 @@ actor TalkService {
     func deleteConversation(id: String) async throws {
         try await api.delete("/talk/conversations/\(id)")
     }
+
+    // MARK: - Audio Transcription
+
+    /// Uploads a WAV audio recording for speech-to-text transcription.
+    ///
+    /// `POST /v1/talk/transcribe`
+    func transcribeAudio(data: Data, language: String?) async throws -> TranscriptionResponse {
+        let fields = language.map { ["language": $0] } ?? [:]
+        return try await api.uploadMultipart(
+            "/talk/transcribe",
+            fileData: data,
+            fileName: "recording.wav",
+            mimeType: "audio/wav",
+            fields: fields
+        )
+    }
 }

@@ -181,6 +181,9 @@ async def store_message(
     conversation_id: uuid.UUID,
     role: str,
     text_content: str,
+    content_type: str = "text",
+    audio_transcription: str | None = None,
+    audio_duration_seconds: int | None = None,
 ) -> Message:
     """Store a new message and update conversation metadata."""
     # Get current max sequence number
@@ -194,8 +197,10 @@ async def store_message(
         conversation_id=conversation_id,
         sequence_number=max_seq + 1,
         role=role,
-        content_type="text",
+        content_type=content_type,
         text_content=text_content,
+        audio_transcription=audio_transcription,
+        audio_duration_seconds=audio_duration_seconds,
     )
     db.add(message)
     await db.flush()

@@ -51,6 +51,14 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - com.langbrew.app
+        SUPABASE_URL: $(SUPABASE_URL)
+        SUPABASE_ANON_KEY: $(SUPABASE_ANON_KEY)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSMicrophoneUsageDescription: "LangBrew needs microphone access so you can practice speaking in your target language."
+    configFiles:
+      Debug: Secrets.xcconfig
+      Release: Secrets.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.langbrew.app

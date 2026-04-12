@@ -19,6 +19,23 @@ final class ChatViewModel {
 
     var isStreaming: Bool = false
 
+    // MARK: - Voice Recording State
+
+    var isTranscribing: Bool = false
+    var showMicPermissionDenied: Bool = false
+
+    /// The recording service for voice input.
+    private let recordingService = AudioRecordingService()
+
+    /// Whether the recording service is currently capturing audio.
+    var isRecording: Bool { recordingService.isRecording }
+
+    /// Current recording duration in seconds.
+    var recordingDuration: TimeInterval { recordingService.recordingDuration }
+
+    /// Normalized amplitude (0-1) for waveform visualization.
+    var currentAmplitude: Float { recordingService.currentAmplitude }
+
     // MARK: - Transcript Toggle
 
     var showTranscript: Bool = true
@@ -28,6 +45,7 @@ final class ChatViewModel {
     var conversationId: String = ""
     var partnerName: String = ""
     var topic: String = ""
+    var conversationLanguage: String = ""
 
     // MARK: - Feedback Navigation
 
@@ -65,6 +83,7 @@ final class ChatViewModel {
         conversationId = conversation.id
         partnerName = conversation.partnerName
         topic = conversation.topic
+        conversationLanguage = conversation.language
     }
 
     // MARK: - Data Loading
@@ -139,6 +158,62 @@ final class ChatViewModel {
         }
 
         isStreaming = false
+    }
+
+    // MARK: - Voice Recording
+
+    /// Toggles the recording state: starts recording if idle, stops and transcribes if recording.
+    func toggleRecording() async {
+        if isRecording {
+            await stopAndTranscribe()
+        } else {
+            // Check / request permission
+            recordingService.checkPermissionStatus()
+            if recordingService.permissionStatus == .denied {
+                showMicPermissionDenied = true
+                return
+            }
+
+            do {
+                try await recordingService.startRecording()
+            } catch {
+                if case AudioRecordingError.permissionDenied = error {
+                    showMicPermissionDenied = true
+                } else {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                }
+            }
+        }
+    }
+
+    /// Stops recording, transcribes the audio, and sends the result as a message.
+    func stopAndTranscribe() async {
+        let wavData = recordingService.stopRecording()
+
+        guard let wavData, !wavData.isEmpty else {
+            // Recording too short, silently return
+            return
+        }
+
+        isTranscribing = true
+
+        do {
+            let language = conversationLanguage.isEmpty ? nil : conversationLanguage
+            let response = try await talkService.transcribeAudio(data: wavData, language: language)
+            let trimmed = response.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                isTranscribing = false
+                return
+            }
+            inputText = trimmed
+            isTranscribing = false
+            await sendMessage()
+        } catch {
+            errorMessage = "Transcription failed: \(error.localizedDescription)"
+            showErrorAlert = true
+            isTranscribing = false
+        }
     }
 
     // MARK: - Request Feedback

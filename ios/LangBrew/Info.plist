@@ -43,6 +43,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LangBrew needs microphone access so you can practice speaking in your target language.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>
