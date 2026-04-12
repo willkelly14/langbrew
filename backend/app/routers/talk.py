@@ -133,8 +133,8 @@ async def transcribe_audio_endpoint(
             detail={
                 "error": {
                     "code": "TRANSCRIPTION_FAILED",
-                    "message": "Audio transcription service is unavailable.",
-                    "details": {},
+                    "message": str(exc),
+                    "details": exc.details,
                 }
             },
         ) from exc

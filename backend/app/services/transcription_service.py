@@ -14,7 +14,7 @@ from app.core.config import settings
 logger = structlog.stdlib.get_logger()
 
 MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions"
-MISTRAL_MODEL = "mistral-audio-latest"
+MISTRAL_MODEL = "voxtral-mini-latest"
 
 
 class TranscriptionError(Exception):
@@ -107,8 +107,14 @@ async def transcribe_audio(
                     status_code=response.status_code,
                     body=response.text[:500],
                 )
+                if response.status_code == 401:
+                    msg = "Invalid Mistral API key — check MISTRAL_API_KEY in .env"
+                elif response.status_code == 403:
+                    msg = "Mistral API access denied — your plan may not include audio transcription"
+                else:
+                    msg = f"Mistral transcription API error (HTTP {response.status_code}): {response.text[:200]}"
                 raise TranscriptionError(
-                    f"Mistral transcription API returned HTTP {response.status_code}",
+                    msg,
                     details={
                         "status_code": response.status_code,
                         "body": response.text[:500],
